@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enter kWh Readings · Substations &amp; Generators</title>
+
+<style>
+/* ============================================================
+   Design tokens - shared with the other dashboard pages
+   ============================================================ */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;
+    --good-soft:     rgba(52,211,153,.14);
+    --warn:          #fbbf24;
+    --warn-soft:     rgba(251,191,36,.14);
+    --bad:           #f87171;
+    --bad-soft:      rgba(248,113,113,.14);
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        18px;
+    --sidebar-w:     252px;
+}
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #eef1f8;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f5f7fc;
+    --surface-3:     #eaeefa;
+    --border:        rgba(15,23,42,.10);
+    --border-strong: rgba(15,23,42,.18);
+    --text:          #0f172a;
+    --text-dim:      #55627d;
+    --text-faint:    #7c88a3;
+    --accent:        #2f5fe0;
+    --accent-2:      #7c3aed;
+    --accent-soft:   rgba(47,95,224,.10);
+    --good:          #059669;
+    --good-soft:     rgba(5,150,105,.11);
+    --warn:          #b45309;
+    --warn-soft:     rgba(180,83,9,.11);
+    --bad:           #dc2626;
+    --bad-soft:      rgba(220,38,38,.10);
+    --shadow:        0 16px 34px -20px rgba(15,23,42,.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+body::before {
+    content: ''; position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(76,125,255,.20), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(139,92,246,.15), transparent 60%);
+}
+html[data-theme="light"] body::before {
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(47,95,224,.11), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(124,58,237,.09), transparent 60%);
+}
+
+/* ============================================================ Shell */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+.sidebar {
+    width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+    background: var(--bg-elev); border-right: 1px solid var(--border);
+    padding: 20px 14px; display: flex; flex-direction: column; gap: 22px;
+    position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+.brand-badge {
+    width: 42px; height: 42px; flex: 0 0 42px; border-radius: 12px;
+    background: linear-gradient(150deg, #1c2f5d, #3f1e5a);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 16px -6px rgba(76,125,255,.7);
+}
+.brand-badge img { width: 27px; height: auto; display: block; }
+.brand-name { font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+.brand-sub  { font-size: 11px; color: var(--text-faint); }
+
+.nav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 0 10px; margin-bottom: 7px;
+}
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 10px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border: 1px solid transparent; transition: background .16s, color .16s;
+}
+.nav a:hover { background: var(--surface-2); color: var(--text); }
+.nav a.active {
+    background: var(--accent-soft); color: var(--text);
+    border-color: rgba(76,125,255,.30); font-weight: 600;
+}
+.nav a .ico { display: grid; place-items: center; flex: 0 0 18px; opacity: .9; }
+.nav a.active .ico { opacity: 1; color: var(--accent); }
+
+svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+
+.side-foot { margin-top: auto; }
+.side-card {
+    border-radius: 14px; padding: 14px;
+    background: linear-gradient(150deg, rgba(76,125,255,.20), rgba(139,92,246,.16));
+    border: 1px solid var(--border-strong);
+}
+.side-card h4 { margin: 0 0 3px; font-size: 12.5px; }
+.side-card p  { margin: 0; font-size: 11px; color: var(--text-dim); }
+
+/* ============================================================ Main */
+.main { flex: 1; min-width: 0; padding: 22px 26px 40px; }
+.wrap { max-width: 880px; }
+
+.topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.page-title { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: -.3px; }
+.page-sub   { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+
+button, .btn {
+    font-family: inherit; font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    text-decoration: none;
+    transition: background .16s, border-color .16s, transform .12s;
+}
+button:hover, .btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 22px -12px rgba(76,125,255,.95);
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.icon-btn { padding: 9px 11px; }
+
+/* Form sections */
+.section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 18px 18px 20px; margin-bottom: 16px;
+}
+.section > h2 {
+    margin: 0 0 3px; font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+}
+.section > h2 .num {
+    width: 22px; height: 22px; flex: 0 0 22px; border-radius: 7px;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700;
+}
+.section > .desc { margin: 0 0 15px 31px; font-size: 12px; color: var(--text-faint); }
+
+.grid { display: grid; gap: 13px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field label {
+    font-size: 11.5px; font-weight: 600; color: var(--text-dim);
+    display: flex; align-items: center; gap: 5px;
+}
+.field label .req { color: var(--accent); }
+.field .unit { margin-left: auto; font-size: 10.5px; color: var(--text-faint); font-weight: 500; }
+
+input, select {
+    font-family: inherit; font-size: 13.5px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 10px 12px;
+    outline: none; width: 100%;
+    font-variant-numeric: tabular-nums;
+    transition: border-color .16s, box-shadow .16s;
+}
+select { cursor: pointer; }
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input::placeholder { color: var(--text-faint); }
+input:user-invalid, select:user-invalid { border-color: var(--bad); }
+input.bad { border-color: var(--bad); }
+
+/* Total Units - the computed figure, shown as a result panel */
+.total {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin-top: 15px; padding: 15px 18px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent-soft), rgba(139,92,246,.10));
+    border: 1px solid rgba(76,125,255,.30);
+}
+.total .k {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .11em;
+    color: var(--text-faint); font-weight: 700; margin-bottom: 2px;
+}
+.total .v {
+    font-size: 28px; font-weight: 700; letter-spacing: -.6px;
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.total .v small { font-size: 14px; font-weight: 600; color: var(--text-dim); margin-left: 5px; }
+.total .sum { font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.total.err { background: var(--bad-soft); border-color: rgba(248,113,113,.4); }
+.total.err .v { color: var(--bad); font-size: 15px; letter-spacing: 0; }
+
+/* Submit bar */
+.submit-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 15px 18px;
+}
+.submit-bar .spacer { flex: 1 1 auto; }
+.submit-bar button[type="submit"] { padding: 11px 22px; font-size: 14px; }
+
+.status { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.status.ok   { color: var(--good); }
+.status.err  { color: var(--bad); }
+.status.busy { color: var(--text-dim); }
+.spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border-strong); border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.menu-btn { display: none; }
+.backdrop { display: none; }
+
+@media (max-width: 1000px) {
+    .sidebar {
+        position: fixed; z-index: 50; left: 0; top: 0;
+        transform: translateX(-100%); transition: transform .22s ease;
+        box-shadow: 0 0 50px rgba(0,0,0,.5);
+    }
+    .sidebar.open { transform: none; }
+    .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
+    .menu-btn { display: inline-flex; }
+    .main { padding: 16px 15px 34px; }
+}
+@media (max-width: 560px) {
+    .page-title { font-size: 19px; }
+    .hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="app">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-badge"><img src="assets/koc-logo.png" alt="KOC"></div>
+            <div>
+                <div class="brand-name">Substations &amp; Generators</div>
+                <div class="brand-sub">Utilities Team E&amp;I I</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">View</div>
+            <nav class="nav">
+                <a href="View_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 11h6M9 15h4"/></svg></span> Daily Job Reports</a>
+                <a href="View_Generator_Test_Data.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></span> Generator Test Data</a>
+                <a href="kWh_display.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg></span> kWh Data</a>
+                <a href="Generator_details.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span> Generator Details</a>
+                <a href="Substations_Ele_Rooms.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M8 9V5h8v4M8 14h8M8 17.5h5"/></svg></span> Substations &amp; Ele. Rooms</a>
+                <a href="dashboard.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Dashboard</a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Enter Data</div>
+            <nav class="nav">
+                <a href="Enter_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Daily Job Report</a>
+                <a href="Enter_Generator_Test.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Generator Test Run</a>
+                <a class="active" href="#"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> kWh Readings</a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                <h4>Corporate Services Group</h4>
+                <p>Electrical &amp; Instrumentation Section</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+      <div class="wrap">
+
+        <div class="topbar">
+            <div style="display:flex; align-items:flex-start; gap:11px;">
+                <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+                <div>
+                    <h1 class="page-title">Enter kWh Readings</h1>
+                    <p class="page-sub">Monthly energy consumption — Utilities E&amp;I I</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark" type="button"></button>
+                <a class="btn" href="kWh_display.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg> <span class="hide-sm">View kWh Data</span></a>
+                <a class="btn btn-primary" href="home.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> <span class="hide-sm">Home</span></a>
+            </div>
+        </div>
+
+        <form id="kwhForm">
+
+            <section class="section">
+                <h2><span class="num">1</span> Meter &amp; Period</h2>
+                <p class="desc">Which incomer the reading was taken from, and the month it covers.</p>
+                <div class="grid">
+                    <div class="field full">
+                        <label for="location">Location / Incomer <span class="req">*</span></label>
+                        <select id="location" name="location" required>
+                            <option value="" disabled selected>Select a location</option>
+                            <option value="COMPLEX S/S 1_MLTB-SS1.1_INC1">COMPLEX S/S 1_MLTB-SS1.1_INC1</option>
+                            <option value="COMPLEX S/S 1_MLTB-SS1.1_INC2">COMPLEX S/S 1_MLTB-SS1.1_INC2</option>
+                            <option value="COMPLEX S/S 1_MLTB-SS1.2_INC1">COMPLEX S/S 1_MLTB-SS1.2_INC1</option>
+                            <option value="COMPLEX S/S 1_MLTB-SS1.2_INC2">COMPLEX S/S 1_MLTB-SS1.2_INC2</option>
+                            <option value="COMPLEX S/S 2_MLTB-SS.2.1_INC1">COMPLEX S/S 2_MLTB-SS.2.1_INC1</option>
+                            <option value="COMPLEX S/S 2_MLTB-SS.2.1_INC2">COMPLEX S/S 2_MLTB-SS.2.1_INC2</option>
+                            <option value="COMPLEX S/S 2_MLTB-SS.2.2_INC1">COMPLEX S/S 2_MLTB-SS.2.2_INC1</option>
+                            <option value="COMPLEX S/S 2_MLTB-SS.2.2_INC2">COMPLEX S/S 2_MLTB-SS.2.2_INC2</option>
+                            <option value="COMPLEX S/S 2_MLTB-SS.2.3_INC1">COMPLEX S/S 2_MLTB-SS.2.3_INC1</option>
+                            <option value="COMPLEX S/S 2_MLTB-SS.2.4_INC1">COMPLEX S/S 2_MLTB-SS.2.4_INC1</option>
+                            <option value="COMPLEX S/S 3_MLTB-SS.3.1_INC1">COMPLEX S/S 3_MLTB-SS.3.1_INC1</option>
+                            <option value="COMPLEX S/S 3_MLTB-SS.3.1_INC2">COMPLEX S/S 3_MLTB-SS.3.1_INC2</option>
+                            <option value="COMPLEX S/S 3_MLTB-SS.3.2_INC1">COMPLEX S/S 3_MLTB-SS.3.2_INC1</option>
+                            <option value="COMPLEX S/S 3_MLTB-SS.3.2_INC2">COMPLEX S/S 3_MLTB-SS.3.2_INC2</option>
+                            <option value="COMPUTER CENTER MSB &amp; MAINTBOARD_INC1">COMPUTER CENTER MSB &amp; MAINTBOARD_INC1</option>
+                            <option value="COMPUTER CENTER MSB &amp; MAINTBOARD_INC2">COMPUTER CENTER MSB &amp; MAINTBOARD_INC2</option>
+                            <option value="CSG_MLTP S/S_INC1">CSG_MLTP S/S_INC1</option>
+                            <option value="CSG_MLTP S/S_INC2">CSG_MLTP S/S_INC2</option>
+                            <option value="KGOC LT PANEL 1 INC 1">KGOC LT PANEL 1 INC 1</option>
+                            <option value="KGOC LT PANEL 1 INC 2">KGOC LT PANEL 1 INC 2</option>
+                            <option value="KGOC LT PANEL 2 INC 1">KGOC LT PANEL 2 INC 1</option>
+                            <option value="KOC 160 VILLA S/S MLTP-S1_INC1">KOC 160 VILLA S/S MLTP-S1_INC1</option>
+                            <option value="KOC 160 VILLA S/S MLTP-S1_INC2">KOC 160 VILLA S/S MLTP-S1_INC2</option>
+                            <option value="KOC 160 VILLA S/S MLTP-S2_INC1">KOC 160 VILLA S/S MLTP-S2_INC1</option>
+                            <option value="KOC 160 VILLA S/S MLTP-S2_INC2">KOC 160 VILLA S/S MLTP-S2_INC2</option>
+                            <option value="KOC 160 VILLA S/S MLTP-S3_INC1">KOC 160 VILLA S/S MLTP-S3_INC1</option>
+                            <option value="KOC 160 VILLA S/S MLTP-S3_INC2">KOC 160 VILLA S/S MLTP-S3_INC2</option>
+                            <option value="KPC NEW MLTB">KPC NEW MLTB</option>
+                            <option value="KPC OLD MLTB">KPC OLD MLTB</option>
+                            <option value="MEGA COMPLEX MLTB(10-SWBD)-002_INC1">MEGA COMPLEX MLTB(10-SWBD)-002_INC1</option>
+                            <option value="MEGA COMPLEX MLTB(10-SWBD)-002_INC2">MEGA COMPLEX MLTB(10-SWBD)-002_INC2</option>
+                            <option value="MEGA COMPLEX MLTB(10-SWBD)-003_INC1">MEGA COMPLEX MLTB(10-SWBD)-003_INC1</option>
+                            <option value="MEGA COMPLEX MLTB(10-SWBD)-003_INC2">MEGA COMPLEX MLTB(10-SWBD)-003_INC2</option>
+                            <option value="MEGA COMPLEX MLTB(10-SWBD)-004_INC1">MEGA COMPLEX MLTB(10-SWBD)-004_INC1</option>
+                            <option value="MEGA COMPLEX MLTB(10-SWBD)-004_INC2">MEGA COMPLEX MLTB(10-SWBD)-004_INC2</option>
+                            <option value="MEGA COMPLEX MLTB(10-SWBD)-006_INC1">MEGA COMPLEX MLTB(10-SWBD)-006_INC1</option>
+                            <option value="MEGA COMPLEX MLTB(10-SWBD)-006_INC2">MEGA COMPLEX MLTB(10-SWBD)-006_INC2</option>
+                            <option value="MOI 440V SWITCHBOARD">MOI 440V SWITCHBOARD</option>
+                            <option value="NEW IT 1824-MLTP-01_INC1">NEW IT 1824-MLTP-01_INC1</option>
+                            <option value="NEW IT 1824-MLTP-01_INC2">NEW IT 1824-MLTP-01_INC2</option>
+                            <option value="NEW IT 1824-MLTP-02_INC1">NEW IT 1824-MLTP-02_INC1</option>
+                            <option value="NEW IT 1824-MLTP-02_INC2">NEW IT 1824-MLTP-02_INC2</option>
+                            <option value="SECURITY CENTER SWBD(E999-SGU001)_INC1">SECURITY CENTER SWBD(E999-SGU001)_INC1</option>
+                            <option value="SECURITY CENTER SWBD(E999-SGU001)_INC2">SECURITY CENTER SWBD(E999-SGU001)_INC2</option>
+                            <option value="SECOND AVENUE NEW OFFICE MLTB_INC1">SECOND AVENUE NEW OFFICE MLTB_INC1</option>
+                            <option value="SECOND AVENUE NEW OFFICE MLTB_INC2">SECOND AVENUE NEW OFFICE MLTB_INC2</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="month_year">Month / Year <span class="req">*</span></label>
+                        <input type="month" id="month_year" name="month_year" required>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2><span class="num">2</span> Meter Readings</h2>
+                <p class="desc">Total Units is worked out for you from the two readings.</p>
+                <div class="grid">
+                    <div class="field">
+                        <label for="initial_reading">Initial Reading <span class="req">*</span><span class="unit">kWh</span></label>
+                        <input type="number" step="1" inputmode="numeric" id="initial_reading" name="initial_reading" required>
+                    </div>
+                    <div class="field">
+                        <label for="final_reading">Final Reading <span class="req">*</span><span class="unit">kWh</span></label>
+                        <input type="number" step="1" inputmode="numeric" id="final_reading" name="final_reading" required>
+                    </div>
+                </div>
+
+                <div class="total" id="totalBox">
+                    <div>
+                        <div class="k">Total Units</div>
+                        <div class="v" id="totalValue">—<small>kWh</small></div>
+                    </div>
+                    <div class="sum" id="totalSum">Enter both readings to calculate.</div>
+                    <input type="hidden" id="total_units" name="total_units">
+                </div>
+            </section>
+
+            <section class="section">
+                <h2><span class="num">3</span> Electrical Parameters</h2>
+                <p class="desc">Recorded at the same incomer.</p>
+                <div class="grid">
+                    <div class="field">
+                        <label for="voltage">Voltage <span class="req">*</span><span class="unit">V</span></label>
+                        <input type="number" step="1" inputmode="numeric" id="voltage" name="voltage" required>
+                    </div>
+                    <div class="field">
+                        <label for="current">Highest Current <span class="req">*</span><span class="unit">A</span></label>
+                        <input type="number" step="1" inputmode="numeric" id="current" name="current" required>
+                    </div>
+                </div>
+            </section>
+
+            <div class="submit-bar">
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Submit Reading
+                </button>
+                <button type="button" id="resetBtn">Clear Form</button>
+                <span class="spacer"></span>
+                <span class="status" id="status"></span>
+            </div>
+        </form>
+
+      </div>
+    </main>
+</div>
+
+<script>
+const scriptURL = 'https://script.google.com/macros/s/AKfycbyRKYGnOfbVovVWY9-T197y_Kb8PWFP-TwVhL7TUrfE85gCnhjpBscnBwvh6AEqFxs1/exec';
+
+const $ = function (id) { return document.getElementById(id); };
+const form = $('kwhForm');
+const initialInput = $('initial_reading');
+const finalInput   = $('final_reading');
+const totalUnits   = $('total_units');
+
+/* ---------------- theme ---------------- */
+const ICON_MOON = '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const ICON_SUN  = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/>' +
+                  '<path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+(function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('kwh.theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon();
+})();
+function updateThemeIcon() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('themeBtn').innerHTML = dark ? ICON_SUN : ICON_MOON;
+}
+$('themeBtn').addEventListener('click', function () {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('kwh.theme', next); } catch (e) {}
+    updateThemeIcon();
+});
+
+/* ---------------- mobile nav ---------------- */
+$('menuBtn').addEventListener('click', function () {
+    $('sidebar').classList.add('open'); $('backdrop').classList.add('show');
+});
+$('backdrop').addEventListener('click', function () {
+    $('sidebar').classList.remove('open'); $('backdrop').classList.remove('show');
+});
+
+function escapeHtml(v) {
+    const E = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+    return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return E[c]; });
+}
+
+/* ---------------- total units ----------------
+   Same rule as before: final - initial, blank unless final >= initial.
+   The mismatch is now reported inline instead of in an alert box.        */
+function calculateTotalUnits() {
+    const hasBoth = initialInput.value !== '' && finalInput.value !== '';
+    const initial = parseFloat(initialInput.value);
+    const final   = parseFloat(finalInput.value);
+    const box = $('totalBox');
+
+    if (!hasBoth || isNaN(initial) || isNaN(final)) {
+        totalUnits.value = '';
+        box.classList.remove('err');
+        $('totalValue').innerHTML = '&mdash;<small>kWh</small>';
+        $('totalSum').textContent = 'Enter both readings to calculate.';
+        finalInput.classList.remove('bad');
+        finalInput.setCustomValidity('');
+        return;
+    }
+
+    if (final < initial) {
+        totalUnits.value = '';
+        box.classList.add('err');
+        $('totalValue').textContent = 'Final reading is lower than initial';
+        $('totalSum').textContent = 'Check the two readings before submitting.';
+        finalInput.classList.add('bad');
+        finalInput.setCustomValidity('Final reading cannot be less than the initial reading.');
+        return;
+    }
+
+    const units = final - initial;
+    totalUnits.value = units;
+    box.classList.remove('err');
+    $('totalValue').innerHTML = units.toLocaleString() + '<small>kWh</small>';
+    $('totalSum').textContent = final.toLocaleString() + ' − ' + initial.toLocaleString() + ' = ' + units.toLocaleString();
+    finalInput.classList.remove('bad');
+    finalInput.setCustomValidity('');
+}
+initialInput.addEventListener('input', calculateTotalUnits);
+finalInput.addEventListener('input', calculateTotalUnits);
+
+/* ---------------- defaults ---------------- */
+function setThisMonth() {
+    const d = new Date();
+    $('month_year').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+setThisMonth();
+calculateTotalUnits();
+
+/* ---------------- submit ---------------- */
+const statusEl = $('status');
+function setStatus(kind, text, spinner) {
+    statusEl.className = 'status ' + (kind || '');
+    statusEl.innerHTML = (spinner ? '<span class="spin"></span>' : '') + escapeHtml(text);
+}
+
+function resetAll() {
+    form.reset();
+    setThisMonth();
+    calculateTotalUnits();
+}
+$('resetBtn').addEventListener('click', function () { resetAll(); setStatus('', ''); });
+
+form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    calculateTotalUnits();
+    if (!form.reportValidity()) return;
+
+    const btn = $('submitBtn');
+    btn.disabled = true;
+    setStatus('busy', 'Submitting…', true);
+
+    // Same JSON body the original page sent - the Apps Script reads
+    // JSON.parse(e.postData.contents), so the shape must not change.
+    const payload = {
+        location:        $('location').value,
+        month_year:      $('month_year').value,
+        initial_reading: initialInput.value,
+        final_reading:   finalInput.value,
+        voltage:         $('voltage').value,
+        current:         $('current').value,
+        total_units:     totalUnits.value
+    };
+    const savedLocation = payload.location;
+
+    fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload) })
+        .then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then(function (data) {
+            if (data && data.result === 'success') {
+                resetAll();
+                setStatus('ok', 'Saved — ' + savedLocation + ' recorded.');
+            } else {
+                throw new Error('Unexpected response');
+            }
+        })
+        .catch(function (error) {
+            console.error('Error:', error);
+            setStatus('err', 'Could not submit. Check your connection and try again.');
+        })
+        .finally(function () { btn.disabled = false; });
+});
+</script>
+
+</body>
+</html>

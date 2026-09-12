@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Sign in &mdash; Substations &amp; Generators</title>
+<meta name="apple-mobile-web-app-title" content="KOC S&amp;G">
+<link rel="icon" href="assets/koc-logo.png" type="image/png">
+
+<style>
+/* =============================================================
+   Sign in - Substations & Generators
+
+   Same shell as the rest of the app. The background is the plant as a
+   graph: Corporate Services Group at the middle, the eight principal
+   sites on the inner ring and the rest of the estate on the outer one.
+   The nodes are the real sites from the substations list of 12 Sep 2026
+   - nothing is invented.
+
+   All of it is decoration: the canvas is aria-hidden, sits below the
+   card and takes no pointer events, so it can never eat a click.
+   ============================================================= */
+
+@font-face {
+    font-family: 'Audiowide';
+    font-style: normal; font-weight: 400; font-display: swap;
+    src: url('assets/fonts/audiowide-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+                   U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+                   U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Audiowide';
+    font-style: normal; font-weight: 400; font-display: swap;
+    src: url('assets/fonts/audiowide-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+                   U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+                   U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---- the same design tokens the app's pages use ---- */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;   --good-soft: rgba(52,211,153,.14);
+    --bad:           #f87171;   --bad-soft:  rgba(248,113,113,.14);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+
+input {
+    font-family: inherit;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    outline: none;
+    transition: border-color .16s, box-shadow .16s;
+}
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input::placeholder { color: var(--text-faint); }
+
+.btn-primary {
+    font-family: inherit; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: 1px solid transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 22px -12px rgba(76,125,255,.95);
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: filter .16s, transform .12s;
+}
+.btn-primary:hover  { filter: brightness(1.08); }
+.btn-primary:active { transform: translateY(1px); }
+
+/* ---- layout ---- */
+.login-page {
+    min-height: 100svh;
+    display: grid; place-items: center;
+    padding: 28px 18px calc(28px + env(safe-area-inset-bottom, 0px));
+    position: relative; overflow: hidden;
+}
+
+#graph {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 0; display: block;
+    pointer-events: none;      /* decoration must never eat a click */
+}
+
+/* a wash over the canvas so the card always has contrast to sit on */
+.login-page::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 1;
+    background: radial-gradient(120% 90% at 50% 42%,
+                rgba(7,11,22,.34) 0%, rgba(7,11,22,.80) 62%, rgba(7,11,22,.94) 100%);
+    pointer-events: none;
+}
+
+.login-wrap {
+    position: relative; z-index: 2;
+    width: min(1040px, 100%);
+    display: grid; grid-template-columns: 1.05fr .95fr;
+    gap: 42px; align-items: center;
+}
+
+/* ---- the identity half ---- */
+.login-hero { min-width: 0; }
+
+.hero-mark { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; }
+.hero-mark img {
+    width: 74px; height: auto; display: block;
+    filter: drop-shadow(0 6px 22px rgba(254,250,224,.18));
+}
+.hero-rule { width: 1px; height: 62px; background: var(--border-strong); }
+.hero-org {
+    font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--text-faint); line-height: 1.7;
+}
+.hero-org b { display: block; color: var(--text-dim); font-weight: 600; }
+.hero-csg {
+    display: block;
+    font-size: 16px; letter-spacing: .10em;
+    color: var(--text); font-weight: 600;
+}
+
+.hero-title {
+    font-family: 'Audiowide', 'Segoe UI', system-ui, sans-serif;
+    font-size: clamp(24px, 3.3vw, 35px);
+    line-height: 1.24; font-weight: 400; letter-spacing: .005em;
+    margin: 0 0 12px;
+    /* the accent ramp the second title line used to carry */
+    background: linear-gradient(96deg, var(--accent) 0%, var(--accent-2) 62%, #22d3ee 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+}
+.hero-sub {
+    font-size: 14.5px; color: var(--text-dim); margin: 0 0 5px;
+    white-space: nowrap;               /* it belongs on one line */
+}
+.hero-note { font-size: 12.5px; color: var(--text-faint); margin: 0; }
+
+/* ---- the card ---- */
+.login-card {
+    background: rgba(16,24,41,.82);
+    backdrop-filter: blur(18px) saturate(1.2);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 30px 30px 26px;
+    box-shadow: 0 30px 70px -24px rgba(0,0,0,.92);
+    min-width: 0;
+}
+.login-card h2 { margin: 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+.login-card .lead { margin: 0 0 22px; font-size: 13px; color: var(--text-dim); }
+
+.f-row { margin-bottom: 15px; }
+.f-row label {
+    display: block; font-size: 11.4px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 6px; font-weight: 600;
+}
+.f-in { position: relative; display: flex; align-items: center; }
+.f-in .ico {
+    position: absolute; left: 13px; width: 17px; height: 17px;
+    stroke: var(--text-faint); fill: none; stroke-width: 1.7;
+    stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
+}
+.f-in input {
+    width: 100%; padding: 12px 14px 12px 40px;
+    font-size: 16px;                        /* 16px stops iOS zooming on focus */
+    border-radius: 11px;
+}
+.f-in .peek {
+    position: absolute; right: 6px; padding: 7px 9px; border: 0; background: none;
+    color: var(--text-faint); font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
+    cursor: pointer; border-radius: 8px; font-family: inherit;
+}
+.f-in .peek:hover { color: var(--text); background: var(--surface-3); }
+
+.login-btn {
+    width: 100%; justify-content: center; margin-top: 6px;
+    padding: 13px 18px; font-size: 15px; border-radius: 12px;
+}
+.login-btn[aria-busy="true"] { opacity: .72; pointer-events: none; }
+
+.login-msg {
+    margin-top: 14px; font-size: 12.8px; line-height: 1.5;
+    padding: 10px 13px; border-radius: 10px; display: none;
+}
+.login-msg.show { display: block; }
+.login-msg.bad  { background: var(--bad-soft);  color: var(--bad);
+                  border: 1px solid rgba(248,113,113,.34); }
+.login-msg.ok   { background: var(--good-soft); color: var(--good);
+                  border: 1px solid rgba(52,211,153,.34); }
+
+/* ---- responsive ---- */
+@media (max-width: 900px) {
+    .login-wrap { grid-template-columns: 1fr; gap: 26px; max-width: 460px; }
+    .hero-mark { margin-bottom: 16px; }
+    .hero-mark img { width: 58px; }
+    .hero-title { font-size: clamp(19px, 5.6vw, 26px); }
+    .login-card { padding: 24px 22px 22px; }
+}
+@media (max-width: 420px) {
+    .hero-csg { font-size: 14.5px; letter-spacing: .07em; }
+    .hero-sub { font-size: 13px; }
+}
+@media (max-height: 640px) and (max-width: 900px) {
+    .hero-title { font-size: 18px; }
+    .hero-mark img { width: 46px; }
+    .hero-sub { font-size: 12.5px; }
+    .hero-note { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #graph { opacity: .55; }
+}
+</style>
+</head>
+<body>
+
+<div class="login-page">
+    <canvas id="graph" aria-hidden="true"></canvas>
+
+    <div class="login-wrap">
+
+        <!-- ---------- identity ---------- -->
+        <div class="login-hero">
+            <div class="hero-mark">
+                <img src="assets/koc-logo.png" alt="Kuwait Oil Company">
+                <div class="hero-rule"></div>
+                <div class="hero-org">
+                    <b>Kuwait Oil Company</b>
+                    <span class="hero-csg">Corporate Services Group</span>
+                </div>
+            </div>
+
+            <h1 class="hero-title">Substations &amp; Generators</h1>
+
+            <p class="hero-sub">Electrical &amp; Instrumentation Section</p>
+            <p class="hero-note">Utilities E &amp; I I</p>
+        </div>
+
+        <!-- ---------- form ---------- -->
+        <div class="login-card">
+            <h2>Sign in</h2>
+            <p class="lead">Enter your credentials to open the system.</p>
+
+            <form id="loginForm" novalidate>
+                <div class="f-row">
+                    <label for="user">Username</label>
+                    <div class="f-in">
+                        <svg class="ico" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <input id="user" name="username" type="text" autocomplete="username"
+                               autocapitalize="none" autocorrect="off" spellcheck="false"
+                               placeholder="csg" required>
+                    </div>
+                </div>
+
+                <div class="f-row">
+                    <label for="pass">Password</label>
+                    <div class="f-in">
+                        <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <input id="pass" name="password" type="password" autocomplete="current-password"
+                               placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" required>
+                        <button class="peek" id="peek" type="button" aria-label="Show password">SHOW</button>
+                    </div>
+                </div>
+
+                <button class="btn-primary login-btn" id="signIn" type="submit">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                    <span>Sign in</span>
+                </button>
+
+                <div class="login-msg" id="loginMsg" role="alert" aria-live="polite"></div>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<script>
+/* =============================================================
+   WHAT THIS IS, AND WHAT IT IS NOT
+
+   A front door, not a lock. Every page here is a static file served
+   straight to the browser, so this check runs on the visitor's own
+   machine with their own copy of this script. Anyone who opens the
+   developer tools can read it, skip it, or type main.html directly.
+   The hash below is no more secret than the page it sits in.
+
+   What it is good for: keeping the app off an unattended screen and
+   making people identify themselves before they enter readings. That
+   is worth having, and it is honestly all this can do.
+
+   To change the password, open any page and run in the console:
+       crypto.subtle.digest('SHA-256', new TextEncoder().encode('new one'))
+         .then(b => console.log([...new Uint8Array(b)]
+           .map(x => x.toString(16).padStart(2,'0')).join('')))
+   then paste the 64 characters into USERS below.
+   ============================================================= */
+(function () {
+    'use strict';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ---------------------------------------------------------
+       credentials
+       --------------------------------------------------------- */
+    var SESSION_KEY = 'koc-sg-session';
+    var HOURS = 12;                            /* a shift, not a fortnight */
+
+    var USERS = {
+        csg: {
+            /* SHA-256 of the team password */
+            hash: '4e1fd367dac6793d4d4876b3b4c7ca635bcd540cc6000046e91f9c2b321d7546',
+            name: 'Corporate Services Group'
+        }
+    };
+
+    function toHex(buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+            return ('00' + b.toString(16)).slice(-2);
+        }).join('');
+    }
+    function sha256(text) {
+        if (!(window.crypto && window.crypto.subtle)) {
+            return Promise.reject(new Error('this browser has no Web Crypto'));
+        }
+        return window.crypto.subtle
+            .digest('SHA-256', new TextEncoder().encode(String(text))).then(toHex);
+    }
+    /* Constant time out of habit. It buys nothing here - the hash is in the
+       file the reader already has - but the shape of the code should not
+       teach the wrong lesson if it is ever lifted somewhere it matters. */
+    function equalish(a, b) {
+        if (a.length !== b.length) return false;
+        var diff = 0;
+        for (var i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+        return diff === 0;
+    }
+
+    function signIn(username, password) {
+        var u = String(username || '').trim().toLowerCase();
+        var rec = USERS[u];
+        return sha256(password || '').then(function (h) {
+            var expected = rec ? rec.hash : '0'.repeat(64);
+            if (!rec || !equalish(h, expected)) return { ok: false };
+            var s = { user: u, name: rec.name, at: Date.now(),
+                      until: Date.now() + HOURS * 3600 * 1000 };
+            try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+            return { ok: true, session: s };
+        });
+    }
+
+    /* ---------------------------------------------------------
+       the graph - Corporate Services Group and the sites it runs.
+       Ring 1 the eight principal sites, ring 2 everything else.
+       From the substations list of 12 Sep 2026.
+       --------------------------------------------------------- */
+    var SPEC = [
+        ['CORPORATE SERVICES GROUP', 0],
+        ['OFFICE COMPLEX S/S', 1],
+        ['KOC MAIN OFFICE', 1],
+        ['COMPUTER CENTER', 1],
+        ['MEGA COMPLEX', 1],
+        ['SECURITY CENTER', 1],
+        ['NEW IT', 1],
+        ['2ND AVENUE', 1],
+        ['AHMAD AL JABER', 1],
+        ['HANGER 140/150', 2],
+        ['KPC NEW', 2],
+        ['KPC OLD', 2],
+        ['YELLOW BUILDING', 2],
+        ['CORE STORE 01', 2],
+        ['CORE STORE 02', 2],
+        ['CORE STORE 03', 2],
+        ['EX PHQ', 2],
+        ['RADIO STATION', 2],
+        ['MOI', 2],
+        ['KGOC', 2],
+        ['CSG', 2],
+        ['160 VILLA S1', 2],
+        ['160 VILLA S2', 2],
+        ['160 VILLA S3', 2],
+        ['GUEST HOUSE', 2],
+        ['AHMEDI PARK SS2', 2],
+        ['AHMADI PARK SS1', 2],
+        ['FIRE TEAM', 2],
+        ['PETROL FILLING', 2],
+        ['WHITE HOUSE', 2],
+        ['MECH. WORKSHOP', 2]
+    ];
+
+    var cv = $('graph'), cx = cv.getContext('2d');
+    var W = 0, H = 0, dpr = 1;
+    var nodes = [], links = [];
+    var pointer = { x: 0, y: 0, has: false };
+
+    function build() {
+        nodes = [];
+        var byRing = [[], [], []];
+        SPEC.forEach(function (s, i) {
+            var n = { label: s[0], ring: s[1], i: i };
+            nodes.push(n);
+            byRing[n.ring].push(n);
+        });
+
+        /* Lay each ring out evenly, then let the drift do the rest. The
+           offset per ring stops the spokes lining up into a star. */
+        byRing.forEach(function (ring, r) {
+            ring.forEach(function (n, k) {
+                n.a = (k / ring.length) * Math.PI * 2 + r * 0.62;
+                n.r = r;
+                n.spin = (r === 0 ? 0 : (r % 2 ? 1 : -1) * (0.00006 + 0.00002 * r));
+                n.bob = Math.random() * Math.PI * 2;
+                n.bobRate = 0.0004 + Math.random() * 0.0004;
+            });
+        });
+
+        /* every node hangs off the nearest one in the ring above it */
+        links = [];
+        nodes.forEach(function (n) {
+            if (n.ring === 0) return;
+            var up = nodes.filter(function (m) { return m.ring === n.ring - 1; });
+            var best = up[0], bd = Infinity;
+            up.forEach(function (m) {
+                var d = Math.abs(Math.atan2(Math.sin(n.a - m.a), Math.cos(n.a - m.a)));
+                if (d < bd) { bd = d; best = m; }
+            });
+            links.push({ a: best, b: n, phase: Math.random() * Math.PI * 2 });
+        });
+    }
+
+    function place(t) {
+        var cxm = W / 2, cym = H * 0.46;
+        var unit = Math.min(W, H) * 0.185;
+        var px = pointer.has ? (pointer.x - cxm) / W : 0;
+        var py = pointer.has ? (pointer.y - cym) / H : 0;
+
+        nodes.forEach(function (n) {
+            var ang = n.a + (reduced ? 0 : n.spin * t);
+            var rad = n.r * unit + (reduced ? 0 : Math.sin(n.bob + t * n.bobRate) * unit * 0.055);
+            /* the outer ring shifts a little more, which reads as depth */
+            var par = 1 + n.r * 0.5;
+            n.x = cxm + Math.cos(ang) * rad + px * 22 * par;
+            n.y = cym + Math.sin(ang) * rad * 0.82 + py * 16 * par;
+        });
+    }
+
+    function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        W = cv.clientWidth; H = cv.clientHeight;
+        cv.width = Math.round(W * dpr);
+        cv.height = Math.round(H * dpr);
+        cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    var RING_TINT = ['#8b5cf6', '#4c7dff', '#38bdf8'];
+
+    function draw(t) {
+        cx.clearRect(0, 0, W, H);
+        place(t);
+
+        /* links first, so the nodes sit on top of them */
+        links.forEach(function (l) {
+            var pulse = reduced ? 0.5 : (Math.sin(t * 0.0012 + l.phase) * 0.5 + 0.5);
+            cx.strokeStyle = 'rgba(120,150,220,' + (0.05 + pulse * 0.10).toFixed(3) + ')';
+            cx.lineWidth = l.b.ring === 1 ? 1.3 : 0.9;
+            cx.beginPath();
+            cx.moveTo(l.a.x, l.a.y);
+            cx.lineTo(l.b.x, l.b.y);
+            cx.stroke();
+
+            /* a spark running the length of the link, the current flowing */
+            if (!reduced) {
+                var f = ((t * 0.00016 + l.phase) % 1);
+                var sx = l.a.x + (l.b.x - l.a.x) * f;
+                var sy = l.a.y + (l.b.y - l.a.y) * f;
+                cx.fillStyle = 'rgba(150,190,255,' +
+                               (0.30 * (1 - Math.abs(f - .5) * 2) + 0.05).toFixed(3) + ')';
+                cx.beginPath(); cx.arc(sx, sy, 1.5, 0, 7); cx.fill();
+            }
+        });
+
+        nodes.forEach(function (n) {
+            var isHub = n.ring === 0;
+            var rad = isHub ? 9 : n.ring === 1 ? 5 : 3.4;
+            var tint = RING_TINT[n.ring];
+
+            cx.save();
+            cx.shadowColor = tint;
+            cx.shadowBlur = isHub ? 26 : 12;
+            cx.fillStyle = tint;
+            cx.globalAlpha = isHub ? 0.95 : n.ring === 1 ? 0.8 : 0.6;
+            cx.beginPath(); cx.arc(n.x, n.y, rad, 0, 7); cx.fill();
+            cx.restore();
+
+            if (isHub) {
+                cx.save();
+                cx.globalAlpha = 0.28;
+                cx.strokeStyle = tint; cx.lineWidth = 1.2;
+                var halo = 16 + (reduced ? 0 : Math.sin(t * 0.0011) * 4);
+                cx.beginPath(); cx.arc(n.x, n.y, halo, 0, 7); cx.stroke();
+                cx.restore();
+            }
+
+            /* Labels only where they will not turn into a smear. On a phone
+               the ring is barely 80px across, so 19 substation names would
+               pile on top of each other - the dots carry it instead. */
+            var show = isHub || (n.ring === 1 && W > 620) || W > 900;
+            if (!show) return;
+            cx.save();
+            cx.globalAlpha = isHub ? 0.62 : n.ring === 1 ? 0.40 : 0.22;
+            cx.fillStyle = '#c7d3f0';
+            cx.font = (isHub ? '600 11px ' : '500 9.5px ') +
+                      '-apple-system, "Segoe UI", system-ui, sans-serif';
+            cx.textAlign = 'center';
+            cx.fillText(n.label, n.x, n.y - (isHub ? 18 : 11));
+            cx.restore();
+        });
+    }
+
+    var raf = null;
+    function loop(t) { draw(t); raf = requestAnimationFrame(loop); }
+
+    function start() {
+        resize();
+        build();
+        /* Paint once, synchronously. requestAnimationFrame does not run on a
+           hidden page, so a tab opened in the background would otherwise show
+           a blank canvas until it was looked at. */
+        if (W && H) draw(0);
+        if (reduced) return;
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(loop);
+    }
+
+    /* A page that lays out at zero width first - opened in a background tab,
+       or in a pane that has not been given its size yet - would leave the
+       canvas blank until something happened to resize it. Watching the box
+       catches the first real measurement as well as every later change. */
+    function refit() {
+        resize(); build(); draw(0);
+    }
+    if (window.ResizeObserver) {
+        new ResizeObserver(function () {
+            if (cv.clientWidth && (cv.clientWidth !== W || cv.clientHeight !== H)) refit();
+        }).observe(cv);
+    }
+    window.addEventListener('resize', function () {
+        resize(); build(); if (reduced) draw(0);
+    });
+    window.addEventListener('pointermove', function (e) {
+        pointer.x = e.clientX; pointer.y = e.clientY; pointer.has = true;
+    }, { passive: true });
+    /* a background animation has no business running on a hidden tab */
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = null; } }
+        else if (!reduced && !raf) raf = requestAnimationFrame(loop);
+    });
+
+    /* ---------------------------------------------------------
+       the form
+       --------------------------------------------------------- */
+    function say(kind, text) {
+        var m = $('loginMsg');
+        m.className = 'login-msg show ' + kind;
+        m.textContent = text;
+    }
+    function clearSay() { $('loginMsg').className = 'login-msg'; }
+
+    $('peek').addEventListener('click', function () {
+        var p = $('pass');
+        var show = p.type === 'password';
+        p.type = show ? 'text' : 'password';
+        this.textContent = show ? 'HIDE' : 'SHOW';
+        this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        p.focus();
+    });
+
+    $('loginForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearSay();
+
+        var u = $('user').value.trim();
+        var p = $('pass').value;
+        if (!u || !p) {
+            say('bad', 'Enter both a username and a password.');
+            (!u ? $('user') : $('pass')).focus();
+            return;
+        }
+
+        var btn = $('signIn');
+        btn.setAttribute('aria-busy', 'true');
+        btn.lastElementChild.textContent = 'Checking\u2026';
+
+        signIn(u, p).then(function (r) {
+            if (!r.ok) {
+                btn.removeAttribute('aria-busy');
+                btn.lastElementChild.textContent = 'Sign in';
+                say('bad', 'That username and password do not match.');
+                $('pass').value = '';
+                $('pass').focus();
+                return;
+            }
+            say('ok', 'Signed in. Opening the system\u2026');
+            setTimeout(function () { location.replace('home.html'); }, 380);
+        }).catch(function (err) {
+            btn.removeAttribute('aria-busy');
+            btn.lastElementChild.textContent = 'Sign in';
+            say('bad', 'Could not sign in (' + err.message + ').');
+        });
+    });
+
+    start();
+    $('user').focus();
+})();
+</script>
+</body>
+</html>

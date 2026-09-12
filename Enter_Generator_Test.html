@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enter Generator Test · Substations &amp; Generators</title>
+<link rel="preconnect" href="https://sheets.googleapis.com" crossorigin>
+
+<style>
+/* ============================================================
+   Design tokens - shared with the other dashboard pages
+   ============================================================ */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;
+    --good-soft:     rgba(52,211,153,.14);
+    --warn:          #fbbf24;
+    --warn-soft:     rgba(251,191,36,.14);
+    --bad:           #f87171;
+    --bad-soft:      rgba(248,113,113,.14);
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        18px;
+    --sidebar-w:     252px;
+}
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #eef1f8;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f5f7fc;
+    --surface-3:     #eaeefa;
+    --border:        rgba(15,23,42,.10);
+    --border-strong: rgba(15,23,42,.18);
+    --text:          #0f172a;
+    --text-dim:      #55627d;
+    --text-faint:    #7c88a3;
+    --accent:        #2f5fe0;
+    --accent-2:      #7c3aed;
+    --accent-soft:   rgba(47,95,224,.10);
+    --good:          #059669;
+    --good-soft:     rgba(5,150,105,.11);
+    --warn:          #b45309;
+    --warn-soft:     rgba(180,83,9,.11);
+    --bad:           #dc2626;
+    --bad-soft:      rgba(220,38,38,.10);
+    --shadow:        0 16px 34px -20px rgba(15,23,42,.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+body::before {
+    content: ''; position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(76,125,255,.20), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(139,92,246,.15), transparent 60%);
+}
+html[data-theme="light"] body::before {
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(47,95,224,.11), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(124,58,237,.09), transparent 60%);
+}
+
+/* ============================================================ Shell */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+.sidebar {
+    width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+    background: var(--bg-elev); border-right: 1px solid var(--border);
+    padding: 20px 14px; display: flex; flex-direction: column; gap: 22px;
+    position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+.brand-badge {
+    width: 42px; height: 42px; flex: 0 0 42px; border-radius: 12px;
+    background: linear-gradient(150deg, #1c2f5d, #3f1e5a);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 16px -6px rgba(76,125,255,.7);
+}
+.brand-badge img { width: 27px; height: auto; display: block; }
+.brand-name { font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+.brand-sub  { font-size: 11px; color: var(--text-faint); }
+
+.nav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 0 10px; margin-bottom: 7px;
+}
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 10px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border: 1px solid transparent; transition: background .16s, color .16s;
+}
+.nav a:hover { background: var(--surface-2); color: var(--text); }
+.nav a.active {
+    background: var(--accent-soft); color: var(--text);
+    border-color: rgba(76,125,255,.30); font-weight: 600;
+}
+.nav a .ico { display: grid; place-items: center; flex: 0 0 18px; opacity: .9; }
+.nav a.active .ico { opacity: 1; color: var(--accent); }
+
+svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+
+.side-foot { margin-top: auto; }
+.side-card {
+    border-radius: 14px; padding: 14px;
+    background: linear-gradient(150deg, rgba(76,125,255,.20), rgba(139,92,246,.16));
+    border: 1px solid var(--border-strong);
+}
+.side-card h4 { margin: 0 0 3px; font-size: 12.5px; }
+.side-card p  { margin: 0; font-size: 11px; color: var(--text-dim); }
+
+/* ============================================================ Main */
+.main { flex: 1; min-width: 0; padding: 22px 26px 40px; }
+.wrap { max-width: 1080px; }
+
+.topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.page-title { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: -.3px; }
+.page-sub   { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+
+button, .btn {
+    font-family: inherit; font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: background .16s, border-color .16s, transform .12s;
+}
+button:hover, .btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 22px -12px rgba(76,125,255,.95);
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.icon-btn { padding: 9px 11px; }
+
+/* Nameplate reference card */
+.plate {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 16px 18px; margin-bottom: 16px;
+    position: relative; overflow: hidden;
+}
+.plate::after {
+    content: ''; position: absolute; right: -40px; top: -40px;
+    width: 130px; height: 130px; border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft), transparent 70%);
+}
+.plate-head {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.plate-head .name { font-size: 16px; font-weight: 700; }
+.plate-head .make {
+    font-size: 12px; color: var(--accent); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .08em;
+}
+.plate-empty { color: var(--text-faint); font-size: 13px; }
+.plate-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+    gap: 10px;
+}
+.plate-item {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 11px; padding: 9px 11px;
+}
+.plate-item .k {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--text-faint); font-weight: 700; margin-bottom: 3px;
+}
+.plate-item .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.plate-batt {
+    margin-top: 10px; font-size: 12px; color: var(--text-dim);
+    border-top: 1px dashed var(--border); padding-top: 9px;
+}
+.plate-batt b { color: var(--text-faint); font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .09em; }
+
+/* Form sections */
+.section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 18px 18px 20px; margin-bottom: 16px;
+}
+.section > h2 {
+    margin: 0 0 3px; font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+}
+.section > h2 .num {
+    width: 22px; height: 22px; flex: 0 0 22px; border-radius: 7px;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700;
+}
+.section > .desc { margin: 0 0 15px 31px; font-size: 12px; color: var(--text-faint); }
+
+.grid { display: grid; gap: 13px; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); }
+.grid.wide { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field.span2 { grid-column: span 2; }
+.field label {
+    font-size: 11.5px; font-weight: 600; color: var(--text-dim);
+    display: flex; align-items: center; gap: 5px;
+}
+.field label .req { color: var(--accent); }
+.field .rated { margin-left: auto; font-size: 10.5px; color: var(--text-faint); font-weight: 500; }
+
+input, select, textarea {
+    font-family: inherit; font-size: 13.5px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 10px 12px;
+    outline: none; width: 100%;
+    transition: border-color .16s, box-shadow .16s;
+}
+select { cursor: pointer; }
+input:focus, select:focus, textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input::placeholder, textarea::placeholder { color: var(--text-faint); }
+/* Only flag a field once the user has actually interacted with it - :invalid
+   alone would paint every empty required box red the moment the page loads. */
+input:user-invalid, select:user-invalid, textarea:user-invalid { border-color: var(--bad); }
+textarea { resize: vertical; min-height: 74px; }
+
+/* Submit bar */
+.submit-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 15px 18px;
+}
+.submit-bar .spacer { flex: 1 1 auto; }
+.submit-bar .btn-primary, .submit-bar button[type="submit"] { padding: 11px 22px; font-size: 14px; }
+
+.status { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.status.ok   { color: var(--good); }
+.status.err  { color: var(--bad); }
+.status.busy { color: var(--text-dim); }
+.spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border-strong); border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.banner {
+    display: none; align-items: flex-start; gap: 9px;
+    padding: 11px 14px; border-radius: 12px; font-size: 12.5px;
+    margin-bottom: 16px;
+}
+.banner.show { display: flex; }
+.banner.warn { background: var(--warn-soft); color: var(--warn); border: 1px solid transparent; }
+
+.menu-btn { display: none; }
+.backdrop { display: none; }
+
+@media (max-width: 1000px) {
+    .sidebar {
+        position: fixed; z-index: 50; left: 0; top: 0;
+        transform: translateX(-100%); transition: transform .22s ease;
+        box-shadow: 0 0 50px rgba(0,0,0,.5);
+    }
+    .sidebar.open { transform: none; }
+    .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
+    .menu-btn { display: inline-flex; }
+    .main { padding: 16px 15px 34px; }
+    .field.span2 { grid-column: auto; }
+}
+@media (max-width: 560px) {
+    .page-title { font-size: 19px; }
+    .hide-sm { display: none; }
+    .grid { grid-template-columns: 1fr 1fr; }
+    .grid.wide { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+/* The Equipment tab supplies both the location list and the nameplate data,
+   so this page no longer carries its own hard-coded copy. */
+const apiKey  = 'AIzaSyDk7s5HgALXCS4Jrjqt_-J09YbTOFV0pUg';
+const sheetId = '1JyxD0o4XMrlABqz7DYxuH85jnlLLqWGLXg8Mcs3Oluo';
+const EQUIP_URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId +
+                  '/values/Equipment?key=' + apiKey + '&prettyPrint=false&majorDimension=ROWS';
+const EQUIP_CACHE_KEY = 'generatorEquip.cache.v1';
+
+const equipPromise = fetch(EQUIP_URL).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+});
+</script>
+</head>
+<body>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="app">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-badge"><img src="assets/koc-logo.png" alt="KOC"></div>
+            <div>
+                <div class="brand-name">Substations &amp; Generators</div>
+                <div class="brand-sub">Utilities Team E&amp;I I</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">View</div>
+            <nav class="nav">
+                <a href="View_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 11h6M9 15h4"/></svg></span> Daily Job Reports</a>
+                <a href="View_Generator_Test_Data.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></span> Generator Test Data</a>
+                <a href="kWh_display.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg></span> kWh Data</a>
+                <a href="Generator_details.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span> Generator Details</a>
+                <a href="Substations_Ele_Rooms.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M8 9V5h8v4M8 14h8M8 17.5h5"/></svg></span> Substations &amp; Ele. Rooms</a>
+                <a href="dashboard.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Dashboard</a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Enter Data</div>
+            <nav class="nav">
+                <a href="Enter_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Daily Job Report</a>
+                <a class="active" href="#"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Generator Test Run</a>
+                <a href="kWh_Reading.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> kWh Readings</a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                <h4>Corporate Services Group</h4>
+                <p>Electrical &amp; Instrumentation Section</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+      <div class="wrap">
+
+        <div class="topbar">
+            <div style="display:flex; align-items:flex-start; gap:11px;">
+                <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+                <div>
+                    <h1 class="page-title">Enter Generator Test Run</h1>
+                    <p class="page-sub">Record a monthly generator test — KOC Utilities E&amp;I I</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark" type="button"></button>
+                <a class="btn btn-primary" href="home.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> <span class="hide-sm">Home</span></a>
+            </div>
+        </div>
+
+        <div class="banner warn" id="offlineBanner">
+            <svg class="i" viewBox="0 0 24 24" style="flex:0 0 16px"><path d="M12 3.5L1.8 20.5h20.4z"/><path d="M12 9.5v4.5M12 17.4v.1"/></svg>
+            <span id="offlineText"></span>
+        </div>
+
+        <!-- Nameplate reference for the selected generator -->
+        <section class="plate" id="plate">
+            <div class="plate-empty" id="plateEmpty">Select a location to see that generator's rated values.</div>
+            <div id="plateBody" style="display:none">
+                <div class="plate-head">
+                    <span class="name" id="plateName"></span>
+                    <span class="make" id="plateMake"></span>
+                </div>
+                <div class="plate-grid" id="plateGrid"></div>
+                <div class="plate-batt" id="plateBatt"></div>
+            </div>
+        </section>
+
+        <form id="generatorForm"
+              action="https://script.google.com/macros/s/AKfycbwSkmbMPaRHP5mkckCSPJmg_zxrLXq6ZDas2FHZKoXcj_7NuyLNCh8JaTEwqLmWi58/exec"
+              method="POST">
+
+            <section class="section">
+                <h2><span class="num">1</span> Test Details</h2>
+                <p class="desc">Which generator was tested, and when.</p>
+                <div class="grid wide">
+                    <div class="field span2">
+                        <label for="location">Location <span class="req">*</span></label>
+                        <select id="location" name="location" required>
+                            <option value="" disabled selected>Select a location</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="mode_of_test">Mode of Test <span class="req">*</span></label>
+                        <select id="mode_of_test" name="mode_of_test" required>
+                            <option value="" disabled selected>Select a mode of test</option>
+                            <option value="ACTUAL LOAD">Actual Load</option>
+                            <option value="DUMMY LOAD">Dummy Load</option>
+                            <option value="OFF LOAD">Off Load</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="date">Date <span class="req">*</span></label>
+                        <input type="date" id="date" name="date" required>
+                    </div>
+                    <div class="field">
+                        <label for="time">Time <span class="req">*</span></label>
+                        <input type="time" id="time" name="time" required>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2><span class="num">2</span> Voltage &amp; Current</h2>
+                <p class="desc">Rated values for the selected generator are shown beside each label.</p>
+                <div class="grid">
+                    <div class="field">
+                        <label for="voltage_ll">Voltage L-L <span class="req">*</span><span class="rated" id="ratedVolt"></span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="voltage_ll" name="voltage_ll" required>
+                    </div>
+                    <div class="field">
+                        <label for="voltage_ln">Voltage L-N <span class="req">*</span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="voltage_ln" name="voltage_ln" required>
+                    </div>
+                    <div class="field">
+                        <label for="amps_r">Amps R <span class="req">*</span><span class="rated" id="ratedAmps"></span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="amps_r" name="amps_r" required>
+                    </div>
+                    <div class="field">
+                        <label for="amps_y">Amps Y <span class="req">*</span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="amps_y" name="amps_y" required>
+                    </div>
+                    <div class="field">
+                        <label for="amps_b">Amps B <span class="req">*</span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="amps_b" name="amps_b" required>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2><span class="num">3</span> Engine &amp; Output</h2>
+                <p class="desc">Readings taken from the generator control panel.</p>
+                <div class="grid">
+                    <div class="field">
+                        <label for="battery_volts">Battery Volts <span class="req">*</span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="battery_volts" name="battery_volts" required>
+                    </div>
+                    <div class="field">
+                        <label for="kwh">KWH <span class="req">*</span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="kwh" name="kwh" required>
+                    </div>
+                    <div class="field">
+                        <label for="kw">KW <span class="req">*</span><span class="rated" id="ratedKw"></span></label>
+                        <input type="number" inputmode="numeric" id="kw" name="kw" required>
+                    </div>
+                    <div class="field">
+                        <label for="running_hrs">Running Hrs <span class="req">*</span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="running_hrs" name="running_hrs" required>
+                    </div>
+                    <div class="field">
+                        <label for="pf">Power Factor <span class="req">*</span><span class="rated" id="ratedPf"></span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="pf" name="pf" required>
+                    </div>
+                    <div class="field">
+                        <label for="frequency">Frequency <span class="req">*</span><span class="rated" id="ratedHz"></span></label>
+                        <input type="number" step="0.01" inputmode="decimal" id="frequency" name="frequency" required>
+                    </div>
+                    <div class="field">
+                        <label for="strings">Strings <span class="req">*</span></label>
+                        <input type="number" inputmode="numeric" id="strings" name="strings" required>
+                    </div>
+                    <div class="field">
+                        <label for="rpm">RPM <span class="req">*</span><span class="rated" id="ratedRpm"></span></label>
+                        <input type="number" inputmode="numeric" id="rpm" name="rpm" required>
+                    </div>
+                    <div class="field">
+                        <label for="oil_pressure">Oil Pressure <span class="req">*</span></label>
+                        <input type="text" id="oil_pressure" name="oil_pressure" placeholder="e.g. 436 kPa" required>
+                    </div>
+                    <div class="field">
+                        <label for="water_temp">Water Temp (&deg;C) <span class="req">*</span></label>
+                        <input type="number" inputmode="numeric" id="water_temp" name="water_temp" required>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2><span class="num">4</span> Result &amp; Sign-off</h2>
+                <p class="desc">Outcome of the test and who carried it out.</p>
+                <div class="grid wide">
+                    <div class="field">
+                        <label for="generator_status">Generator Status <span class="req">*</span></label>
+                        <select id="generator_status" name="generator_status" required>
+                            <option value="" disabled selected>Select generator status</option>
+                            <option value="GOOD CONDITION">GOOD CONDITION</option>
+                            <option value="NOT FUNCTIONING">NOT FUNCTIONING</option>
+                            <option value="OPERATIONAL CONDITION WITH WARNING / ERROR STAGE">OPERATIONAL CONDITION WITH WARNING / ERROR STAGE</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="koc_representative">KOC Representative <span class="req">*</span></label>
+                        <select id="koc_representative" name="koc_representative" required>
+                            <option value="" disabled selected>Select a KOC representative</option>
+                            <option value="SNR ENGR. ABDULAZIZ AL ANSARI">Snr Engr. Abdulaziz Al Ansari</option>
+                            <option value="ENGR. ALI HUMOUD AL AJMI">Engr. Ali Humoud Al Ajmi</option>
+                            <option value="ENGR. NOURA HUMOUD AL ZOABI">Engr. Noura Humoud Al Zoabi</option>
+                            <option value="ENGR. BASHAYER AL ENEZI">Engr. Bashayer Al Enezi</option>
+                            <option value="SNR F/M. ABDULLAH EAJEMI">Snr F/M. Abdullah Eajemi</option>
+                            <option value="SNR F/M. ABDULRAHMAN AL MUTAIRI">Snr F/M. Abdulrahman Al Mutairi</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="foreman_select">Foreman <span class="req">*</span></label>
+                        <select id="foreman_select" required>
+                            <option value="" disabled selected>Select a foreman</option>
+                            <option value="JAIS KURIAKOSE">Jais Kuriakose</option>
+                            <option value="ABILASH JOHN">Abilash John</option>
+                            <option value="ANOOP VASU">Anoop Vasu</option>
+                            <option value="SUNIL VARGHESE">Sunil Varghese</option>
+                            <option value="TANVEER AHAMED">Tanveer Ahamed</option>
+                            <option value="BIJU VARGHESE">Biju Varghese</option>
+                            <option value="__OTHER__">Other — type a name…</option>
+                        </select>
+                        <!-- Only the hidden input carries a name, so exactly one
+                             "foreman" value is ever posted. -->
+                        <input type="hidden" name="foreman" id="foreman_value">
+                        <input type="text" id="foreman_other" placeholder="Enter foreman name"
+                               autocomplete="off" style="display:none; margin-top:6px;">
+                    </div>
+                    <div class="field">
+                        <label for="technician_select">Technician <span class="req">*</span></label>
+                        <select id="technician_select" required>
+                            <option value="" disabled selected>Select a technician</option>
+                            <option value="MOHD. TAYYAB">Mohd. Tayyab</option>
+                            <option value="VIJAYAKUMAR V">Vijayakumar V</option>
+                            <option value="ASAD ALI">Asad Ali</option>
+                            <option value="JAGAN A">Jagan A</option>
+                            <option value="__OTHER__">Other — type a name…</option>
+                        </select>
+                        <input type="hidden" name="technician" id="technician_value">
+                        <input type="text" id="technician_other" placeholder="Enter technician name"
+                               autocomplete="off" style="display:none; margin-top:6px;">
+                    </div>
+                    <div class="field">
+                        <label for="remarks">Remarks</label>
+                        <input type="text" id="remarks" name="remarks" placeholder="e.g. MONTHLY TEST RUN">
+                    </div>
+                </div>
+            </section>
+
+            <div class="submit-bar">
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Submit Test Run
+                </button>
+                <button type="button" id="resetBtn">Clear Form</button>
+                <span class="spacer"></span>
+                <span class="status" id="status"></span>
+            </div>
+        </form>
+
+      </div>
+    </main>
+</div>
+
+<script>
+const $ = function (id) { return document.getElementById(id); };
+const form = $('generatorForm');
+const locationSelect = $('location');
+
+/* ---------------- theme ---------------- */
+const ICON_MOON = '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const ICON_SUN  = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/>' +
+                  '<path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+(function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('genTest.theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon();
+})();
+function updateThemeIcon() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('themeBtn').innerHTML = dark ? ICON_SUN : ICON_MOON;
+}
+$('themeBtn').addEventListener('click', function () {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('genTest.theme', next); } catch (e) {}
+    updateThemeIcon();
+});
+
+/* ---------------- mobile nav ---------------- */
+$('menuBtn').addEventListener('click', function () {
+    $('sidebar').classList.add('open'); $('backdrop').classList.add('show');
+});
+$('backdrop').addEventListener('click', function () {
+    $('sidebar').classList.remove('open'); $('backdrop').classList.remove('show');
+});
+
+/* ---------------- helpers ---------------- */
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+function escapeHtml(v) {
+    return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return ESCAPES[c]; });
+}
+
+/* ---------------- equipment / nameplate ---------------- */
+let equipment = {};      // LOCATION -> record
+let equipOrder = [];     // locations in sheet order
+
+// Names only. Used if the sheet and its cache are both unreachable, so the
+// form still works; rated values simply stay blank until the sheet loads.
+const FALLBACK_LOCATIONS = [
+    'OFFICE COMPLEX S/S 1','OFFICE COMPLEX S/S 2 GEN-1','OFFICE COMPLEX S/S 2 GEN-2','OFFICE COMPLEX S/S 3',
+    'COMPUTER CENTER GEN-1','COMPUTER CENTER GEN-2','SECURITY CENTER','AHMAD AL JABER EXHIBITION',
+    'KOC MAIN OFFICE','KOC MEGA COMPLEX GEN-1','KOC MEGA COMPLEX GEN-2','AL TAMEER YELLOW BUILDING',
+    'RADIO STATION','PHQ','HANGER 140','HANGER 150','PORTABLE GENERATOR 1','PORTABLE GENERATOR 2',
+    'PORTABLE GENERATOR 3','PETROL FILLING STATION','EX-ANGLO AMERICAN SCHOOL','FIRE TEAM (AMIRA COURT B)',
+    'CORPORATE SERVICES GROUP BLDG','KOC NEW IT','2ND AVENUE NEW OFFICE','WHITE HOUSE','GUEST HOUSE','KPC'
+];
+
+function loadEquipment(values) {
+    equipment = {}; equipOrder = [];
+    if (!values || values.length < 2) return false;
+    const head = values[0].map(function (h) { return String(h || '').trim().toUpperCase(); });
+    for (let r = 1; r < values.length; r++) {
+        const row = values[r];
+        if (!row || !row[0]) continue;
+        const rec = {};
+        for (let c = 0; c < head.length; c++) rec[head[c]] = row[c] == null ? '' : String(row[c]).trim();
+        const key = String(row[0]).trim().toUpperCase();
+        equipment[key] = rec;
+        equipOrder.push(key);
+    }
+    return equipOrder.length > 0;
+}
+
+function fillLocations(names) {
+    const keep = locationSelect.value;
+    const parts = ['<option value="" disabled' + (keep ? '' : ' selected') + '>Select a location</option>'];
+    for (let i = 0; i < names.length; i++) {
+        parts.push('<option value="' + escapeHtml(names[i]) + '">' + escapeHtml(names[i]) + '</option>');
+    }
+    locationSelect.innerHTML = parts.join('');
+    if (keep) locationSelect.value = keep;
+}
+
+const PLATE_FIELDS = [
+    ['KVA', 'KVA'], ['KW', 'KW'], ['VOLT', 'VOLT'], ['AMPS', 'AMPS'],
+    ['RPM', 'RPM'], ['PF', 'PF'], ['FREQUENCY', 'HERTZ'], ['PHASE', 'PHASE'],
+    ['MAIN BREAKER', 'BREAKER']
+];
+
+function showNameplate(loc) {
+    const eq = equipment[String(loc || '').toUpperCase()];
+    if (!eq) {
+        $('plateBody').style.display = 'none';
+        $('plateEmpty').style.display = 'block';
+        $('plateEmpty').textContent = loc
+            ? 'No nameplate record found for this location in the Equipment sheet.'
+            : "Select a location to see that generator's rated values.";
+        setRated({});
+        return;
+    }
+    $('plateEmpty').style.display = 'none';
+    $('plateBody').style.display = 'block';
+    $('plateName').textContent = eq['LOCATION'] || loc;
+    $('plateMake').textContent = eq['MANUFACTURER'] || '';
+
+    const cells = [];
+    for (let i = 0; i < PLATE_FIELDS.length; i++) {
+        const key = PLATE_FIELDS[i][0], label = PLATE_FIELDS[i][1];
+        if (!eq[key]) continue;
+        cells.push('<div class="plate-item"><div class="k">' + label + '</div>' +
+                   '<div class="v">' + escapeHtml(eq[key]) + '</div></div>');
+    }
+    $('plateGrid').innerHTML = cells.join('');
+    $('plateBatt').innerHTML = eq['BATTERY DETAILS']
+        ? '<b>Battery</b> &nbsp;' + escapeHtml(eq['BATTERY DETAILS']) : '';
+    setRated(eq);
+}
+
+// Rated values echoed next to the matching inputs, as a sanity check
+function setRated(eq) {
+    const put = function (id, key, suffix) {
+        $(id).textContent = eq && eq[key] ? 'rated ' + eq[key] + (suffix || '') : '';
+    };
+    put('ratedVolt', 'VOLT', ' V');
+    put('ratedAmps', 'AMPS', ' A');
+    put('ratedKw',   'KW',   ' kW');
+    put('ratedPf',   'PF');
+    put('ratedHz',   'FREQUENCY', ' Hz');
+    put('ratedRpm',  'RPM');
+}
+
+locationSelect.addEventListener('change', function () { showNameplate(this.value); });
+
+async function initEquipment() {
+    let loaded = false;
+    try {
+        const c = localStorage.getItem(EQUIP_CACHE_KEY);
+        if (c) loaded = loadEquipment(JSON.parse(c));
+    } catch (e) {}
+    if (loaded) fillLocations(equipOrder);
+
+    try {
+        const data = await equipPromise;
+        if (data.error) throw new Error(data.error.message || 'API error');
+        const values = data.values || [];
+        if (loadEquipment(values)) {
+            fillLocations(equipOrder);
+            showNameplate(locationSelect.value);
+            try { localStorage.setItem(EQUIP_CACHE_KEY, JSON.stringify(values)); } catch (e) {}
+        }
+    } catch (err) {
+        console.error('Equipment sheet unavailable:', err);
+        if (!loaded) {
+            fillLocations(FALLBACK_LOCATIONS);
+            $('offlineText').textContent =
+                'Could not reach the Equipment sheet, so rated values are unavailable. ' +
+                'You can still record the test as normal.';
+            $('offlineBanner').classList.add('show');
+        }
+    }
+}
+
+/* ---------------- "pick from list, or type another" fields ----------------
+   The dropdown and the text box are both unnamed; a hidden field carries
+   whichever one applies, so exactly one value is ever posted under the real
+   field name. Used by both Technician and Foreman.                        */
+function wireListOrOther(selectId, otherId, valueId) {
+    const sel = $(selectId), oth = $(otherId), val = $(valueId);
+
+    function sync() {
+        const other = sel.value === '__OTHER__';
+        oth.style.display = other ? 'block' : 'none';
+        oth.required = other;                       // only required while visible
+        if (other) {
+            // Stored upper-case so free-typed names match the listed ones.
+            val.value = oth.value.trim().toUpperCase();
+        } else {
+            val.value = sel.value;
+            oth.value = '';
+        }
+    }
+
+    sel.addEventListener('change', function () {
+        sync();
+        if (sel.value === '__OTHER__') oth.focus();
+    });
+    oth.addEventListener('input', sync);
+    return sync;
+}
+
+const syncTechnician = wireListOrOther('technician_select', 'technician_other', 'technician_value');
+const syncForeman    = wireListOrOther('foreman_select',    'foreman_other',    'foreman_value');
+
+/* ---------------- defaults ---------------- */
+(function setNow() {
+    const d = new Date();
+    const p = function (n) { return String(n).padStart(2, '0'); };
+    $('date').value = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    $('time').value = p(d.getHours()) + ':' + p(d.getMinutes());
+})();
+
+/* ---------------- submit ---------------- */
+const statusEl = $('status');
+function setStatus(kind, text, spinner) {
+    statusEl.className = 'status ' + (kind || '');
+    statusEl.innerHTML = (spinner ? '<span class="spin"></span>' : '') + escapeHtml(text);
+}
+
+$('resetBtn').addEventListener('click', function () {
+    form.reset();
+    showNameplate('');
+    syncForeman();
+    syncTechnician();
+    setStatus('', '');
+    // Re-apply the sensible defaults a reset wipes out
+    const d = new Date();
+    const p = function (n) { return String(n).padStart(2, '0'); };
+    $('date').value = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    $('time').value = p(d.getHours()) + ':' + p(d.getMinutes());
+});
+
+form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+
+    const btn = $('submitBtn');
+    btn.disabled = true;
+    setStatus('busy', 'Submitting…', true);
+
+    fetch(form.action, { method: 'POST', body: new FormData(form) })
+        .then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const loc = locationSelect.value;
+            form.reset();
+            showNameplate('');
+            syncForeman();
+            syncTechnician();
+            const d = new Date();
+            const p = function (n) { return String(n).padStart(2, '0'); };
+            $('date').value = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+            $('time').value = p(d.getHours()) + ':' + p(d.getMinutes());
+            setStatus('ok', 'Saved — ' + loc + ' recorded.');
+        })
+        .catch(function (error) {
+            console.error('Error:', error);
+            setStatus('err', 'Could not submit. Check your connection and try again.');
+        })
+        .finally(function () { btn.disabled = false; });
+});
+
+initEquipment();
+</script>
+
+</body>
+</html>

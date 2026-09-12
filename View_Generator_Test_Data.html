@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generator Test Run Data · Substations &amp; Generators</title>
+<link rel="preconnect" href="https://sheets.googleapis.com" crossorigin>
+
+<style>
+/* ============================================================
+   Design tokens - shared with the Daily Job Reports page
+   ============================================================ */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;
+    --good-soft:     rgba(52,211,153,.14);
+    --warn:          #fbbf24;
+    --warn-soft:     rgba(251,191,36,.14);
+    --bad:           #f87171;
+    --bad-soft:      rgba(248,113,113,.14);
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        18px;
+    --sidebar-w:     252px;
+}
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #eef1f8;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f5f7fc;
+    --surface-3:     #eaeefa;
+    --border:        rgba(15,23,42,.10);
+    --border-strong: rgba(15,23,42,.18);
+    --text:          #0f172a;
+    --text-dim:      #55627d;
+    --text-faint:    #7c88a3;
+    --accent:        #2f5fe0;
+    --accent-2:      #7c3aed;
+    --accent-soft:   rgba(47,95,224,.10);
+    --good:          #059669;
+    --good-soft:     rgba(5,150,105,.11);
+    --warn:          #b45309;
+    --warn-soft:     rgba(180,83,9,.11);
+    --bad:           #dc2626;
+    --bad-soft:      rgba(220,38,38,.10);
+    --shadow:        0 16px 34px -20px rgba(15,23,42,.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(76,125,255,.20), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(139,92,246,.15), transparent 60%);
+}
+html[data-theme="light"] body::before {
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(47,95,224,.11), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(124,58,237,.09), transparent 60%);
+}
+
+/* ============================================================ Shell */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+.sidebar {
+    width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    padding: 20px 14px;
+    display: flex; flex-direction: column; gap: 22px;
+    position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+.brand-badge {
+    width: 42px; height: 42px; flex: 0 0 42px;
+    border-radius: 12px;
+    background: linear-gradient(150deg, #1c2f5d, #3f1e5a);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 16px -6px rgba(76,125,255,.7);
+}
+.brand-badge img { width: 27px; height: auto; display: block; }
+.brand-name { font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+.brand-sub  { font-size: 11px; color: var(--text-faint); }
+
+.nav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 0 10px; margin-bottom: 7px;
+}
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 10px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border: 1px solid transparent;
+    transition: background .16s, color .16s;
+}
+.nav a:hover { background: var(--surface-2); color: var(--text); }
+.nav a.active {
+    background: var(--accent-soft); color: var(--text);
+    border-color: rgba(76,125,255,.30); font-weight: 600;
+}
+.nav a .ico { display: grid; place-items: center; flex: 0 0 18px; opacity: .9; }
+.nav a.active .ico { opacity: 1; color: var(--accent); }
+
+svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+svg.i.lg { width: 30px; height: 30px; stroke-width: 1.5; }
+
+.side-foot { margin-top: auto; }
+.side-card {
+    border-radius: 14px; padding: 14px;
+    background: linear-gradient(150deg, rgba(76,125,255,.20), rgba(139,92,246,.16));
+    border: 1px solid var(--border-strong);
+}
+.side-card h4 { margin: 0 0 3px; font-size: 12.5px; }
+.side-card p  { margin: 0; font-size: 11px; color: var(--text-dim); }
+
+/* ============================================================ Main */
+.main { flex: 1; min-width: 0; padding: 22px 26px 34px; }
+
+.topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.page-title { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: -.3px; }
+.page-sub   { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+
+.chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 13px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 12.5px; color: var(--text-dim); white-space: nowrap;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 9px var(--good); }
+
+button, .btn {
+    font-family: inherit; font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: background .16s, border-color .16s, transform .12s;
+}
+button:hover, .btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:active { transform: translateY(1px); }
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 22px -12px rgba(76,125,255,.95);
+}
+.btn-primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.icon-btn { padding: 9px 11px; }
+
+.menu-wrap { position: relative; }
+.menu {
+    display: none; position: absolute; right: 0; top: calc(100% + 8px);
+    min-width: 244px; max-height: 340px; overflow: auto;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 14px; box-shadow: var(--shadow); padding: 6px; z-index: 60;
+}
+.menu.open { display: block; }
+.menu-head {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .11em;
+    text-transform: uppercase; color: var(--text-faint); padding: 8px 10px 7px;
+}
+.menu button {
+    display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px;
+    background: transparent; border: none; text-align: left;
+    padding: 9px 10px; border-radius: 9px; color: var(--text); font-size: 13px;
+}
+.menu button:hover { background: var(--surface-2); }
+.menu .cnt { color: var(--text-faint); font-size: 11.5px; white-space: nowrap; }
+.menu .empty { padding: 12px 10px; color: var(--text-dim); font-size: 12.5px; }
+
+/* KPI cards */
+.kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(198px, 1fr));
+    gap: 13px; margin-bottom: 16px;
+}
+.kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 17px;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.kpi::after {
+    content: ''; position: absolute; right: -34px; top: -34px;
+    width: 108px; height: 108px; border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft), transparent 70%);
+}
+.kpi-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--text-faint); font-weight: 600; margin-bottom: 9px;
+}
+.kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -.5px; line-height: 1.15; }
+.kpi-value.sm { font-size: 18px; }
+.kpi-foot { font-size: 11.5px; color: var(--text-dim); margin-top: 5px; }
+
+.panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.toolbar {
+    padding: 14px 16px; display: flex; flex-wrap: wrap;
+    gap: 10px; align-items: center; margin-bottom: 14px;
+}
+.field { position: relative; display: flex; align-items: center; }
+.field .fico { position: absolute; left: 11px; color: var(--text-faint); pointer-events: none; }
+input[type="text"], input[type="date"], select {
+    font-family: inherit; font-size: 13px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 9px 12px; outline: none;
+    transition: border-color .16s, box-shadow .16s;
+}
+input[type="text"] { padding-left: 32px; width: 250px; }
+select { min-width: 200px; cursor: pointer; }
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input::placeholder { color: var(--text-faint); }
+.spacer { flex: 1 1 auto; }
+.result-count { font-size: 12.5px; color: var(--text-dim); white-space: nowrap; }
+.hint { font-size: 11.5px; color: var(--text-faint); white-space: nowrap; }
+
+/* ============================================================ Table
+   23 columns, so the header row AND the Location column both stick.  */
+.table-wrap { overflow: auto; max-height: calc(100vh - 330px); border-radius: var(--radius); }
+table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+
+thead th {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--surface-3); color: var(--text-dim);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; text-align: left;
+    padding: 12px 13px; white-space: nowrap;
+    border-bottom: 1px solid var(--border-strong);
+}
+thead th:first-child {
+    left: 0; z-index: 6;
+    box-shadow: 1px 0 0 var(--border-strong);
+}
+tbody td {
+    padding: 11px 13px; border-bottom: 1px solid var(--border);
+    font-size: 13px; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-dim);
+}
+tbody td:first-child {
+    position: sticky; left: 0; z-index: 2;
+    background: var(--surface);
+    color: var(--text); font-weight: 600;
+    box-shadow: 1px 0 0 var(--border);
+}
+tbody tr:hover td { background: var(--surface-2); }
+tbody tr:hover td:first-child { background: var(--surface-2); }
+tbody tr:last-child td { border-bottom: none; }
+
+/* Remarks can be long - let it wrap instead of stretching the table */
+tbody td.wrap { white-space: normal; min-width: 240px; max-width: 380px; }
+
+.badge {
+    display: inline-block; padding: 4px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; white-space: nowrap;
+    background: var(--surface-3); color: var(--text-dim); border: 1px solid var(--border);
+}
+.badge.good { background: var(--good-soft); color: var(--good); border-color: transparent; }
+.badge.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.badge.bad  { background: var(--bad-soft);  color: var(--bad);  border-color: transparent; }
+
+.state { padding: 54px 20px; text-align: center; color: var(--text-dim); }
+.state .big { margin-bottom: 10px; opacity: .55; }
+.state h3 { margin: 0 0 5px; color: var(--text); font-size: 15px; }
+.state p { margin: 0; font-size: 13px; }
+
+.skeleton-row { display: flex; gap: 14px; padding: 12px 14px; }
+.skeleton-row div {
+    height: 12px; border-radius: 6px;
+    background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
+    background-size: 200% 100%; animation: shimmer 1.25s linear infinite;
+}
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.menu-btn { display: none; }
+.backdrop { display: none; }
+
+@media (max-width: 1000px) {
+    .sidebar {
+        position: fixed; z-index: 50; left: 0; top: 0;
+        transform: translateX(-100%); transition: transform .22s ease;
+        box-shadow: 0 0 50px rgba(0,0,0,.5);
+    }
+    .sidebar.open { transform: none; }
+    .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
+    .menu-btn { display: inline-flex; }
+    .main { padding: 16px 15px 30px; }
+    .table-wrap { max-height: none; }
+    input[type="text"] { width: 100%; }
+    .field, select { flex: 1 1 190px; }
+}
+@media (max-width: 560px) {
+    .page-title { font-size: 19px; }
+    .kpi-value { font-size: 22px; }
+    .hide-sm { display: none; }
+}
+</style>
+
+<script>
+/* Start the request before the DOM is parsed. */
+const apiKey  = 'AIzaSyDk7s5HgALXCS4Jrjqt_-J09YbTOFV0pUg';
+const sheetId = '1JyxD0o4XMrlABqz7DYxuH85jnlLLqWGLXg8Mcs3Oluo';
+const range   = 'Sheet1!A1:X';
+const CACHE_KEY = 'generatorTest.cache.v1';
+
+const SHEET_URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + sheetId +
+                  '/values/' + range + '?key=' + apiKey +
+                  '&prettyPrint=false&majorDimension=ROWS';
+
+const networkPromise = fetch(SHEET_URL).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+});
+
+</script>
+</head>
+<body>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="app">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-badge"><img src="assets/koc-logo.png" alt="KOC"></div>
+            <div>
+                <div class="brand-name">Substations &amp; Generators</div>
+                <div class="brand-sub">Utilities Team E&amp;I I</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">View</div>
+            <nav class="nav">
+                <a href="View_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 11h6M9 15h4"/></svg></span> Daily Job Reports</a>
+                <a class="active" href="#"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></span> Generator Test Data</a>
+                <a href="kWh_display.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg></span> kWh Data</a>
+                <a href="Generator_details.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span> Generator Details</a>
+                <a href="Substations_Ele_Rooms.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M8 9V5h8v4M8 14h8M8 17.5h5"/></svg></span> Substations &amp; Ele. Rooms</a>
+                <a href="dashboard.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Dashboard</a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Enter Data</div>
+            <nav class="nav">
+                <a href="Enter_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Daily Job Report</a>
+                <a href="Enter_Generator_Test.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Generator Test Run</a>
+                <a href="kWh_Reading.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> kWh Readings</a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                <h4>Corporate Services Group</h4>
+                <p>Electrical &amp; Instrumentation Section</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+            <div style="display:flex; align-items:flex-start; gap:11px;">
+                <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+                <div>
+                    <h1 class="page-title">Generator Test Run Data</h1>
+                    <p class="page-sub">Monthly generator test readings and results</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <span class="chip hide-sm"><span class="dot" id="liveDot"></span><span id="syncText">Loading…</span></span>
+                <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark"></button>
+                <div class="menu-wrap">
+                    <button id="reportBtn" title="Download a month's generator test report">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></svg>
+                        <span class="hide-sm">Download Monthly Report</span>
+                    </button>
+                    <div class="menu" id="monthMenu"></div>
+                </div>
+                <a class="btn btn-primary" href="home.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> <span class="hide-sm">Home</span></a>
+            </div>
+        </div>
+
+        <section class="kpis">
+            <div class="kpi">
+                <div class="kpi-label">Total Tests</div>
+                <div class="kpi-value" id="kpiTotal">—</div>
+                <div class="kpi-foot">All records on file</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">This Month</div>
+                <div class="kpi-value" id="kpiMonth">—</div>
+                <div class="kpi-foot" id="kpiMonthFoot">&nbsp;</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Generators Tested</div>
+                <div class="kpi-value" id="kpiLoc">—</div>
+                <div class="kpi-foot">Distinct locations</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Latest Test</div>
+                <div class="kpi-value sm" id="kpiLatest">—</div>
+                <div class="kpi-foot" id="kpiLatestFoot">&nbsp;</div>
+            </div>
+        </section>
+
+        <section class="panel toolbar">
+            <div class="field">
+                <span class="fico"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+                <input type="text" id="searchInput" placeholder="Search all columns…" autocomplete="off">
+            </div>
+            <select id="locationSelect"><option value="">All locations</option></select>
+            <input type="date" id="dateInput">
+            <button id="clearBtn">Clear</button>
+            <span class="spacer"></span>
+            <span class="hint hide-sm">← → arrow keys scroll the table</span>
+            <span class="result-count" id="resultCount"></span>
+        </section>
+
+        <section class="panel">
+            <div class="table-wrap" id="tableWrap">
+                <table>
+                    <thead id="thead"></thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+                <div class="state" id="stateBox">
+                    <div class="skeleton-row"><div style="flex:1"></div><div style="flex:2"></div><div style="flex:1"></div></div>
+                    <div class="skeleton-row"><div style="flex:1"></div><div style="flex:2"></div><div style="flex:1"></div></div>
+                    <div class="skeleton-row"><div style="flex:1"></div><div style="flex:2"></div><div style="flex:1"></div></div>
+                    <div class="skeleton-row"><div style="flex:1"></div><div style="flex:2"></div><div style="flex:1"></div></div>
+                    <div class="skeleton-row"><div style="flex:1"></div><div style="flex:2"></div><div style="flex:1"></div></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script>
+const $ = function (id) { return document.getElementById(id); };
+
+const thead        = $('thead');
+const tbody        = $('tbody');
+const stateBox     = $('stateBox');
+const searchInput  = $('searchInput');
+const locationSelect = $('locationSelect');
+const dateInput    = $('dateInput');
+const resultCount  = $('resultCount');
+const syncText     = $('syncText');
+const liveDot      = $('liveDot');
+const tableWrap    = $('tableWrap');
+
+let header = [];       // column names straight from the sheet
+let rows = [];         // prepared rows, newest first
+let statusCol = -1;    // index of "Generator Status", for the coloured pill
+let remarksCol = -1;   // index of "Remarks", rendered wrapped
+
+/* ---------------- theme ---------------- */
+const ICON_MOON = '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const ICON_SUN  = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/>' +
+                  '<path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+
+(function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('genTest.theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon();
+})();
+function updateThemeIcon() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('themeBtn').innerHTML = dark ? ICON_SUN : ICON_MOON;
+}
+$('themeBtn').addEventListener('click', function () {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('genTest.theme', next); } catch (e) {}
+    updateThemeIcon();
+});
+
+/* ---------------- mobile nav ---------------- */
+$('menuBtn').addEventListener('click', function () {
+    $('sidebar').classList.add('open'); $('backdrop').classList.add('show');
+});
+$('backdrop').addEventListener('click', function () {
+    $('sidebar').classList.remove('open'); $('backdrop').classList.remove('show');
+});
+
+/* ---------------- helpers ---------------- */
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+const NEEDS_ESCAPE = /[&<>"]/;
+function escapeHtml(value) {
+    if (value == null) return '';
+    const s = typeof value === 'string' ? value : String(value);
+    if (!NEEDS_ESCAPE.test(s)) return s;
+    return s.replace(/[&<>"]/g, function (c) { return ESCAPES[c]; });
+}
+function statusClass(text) {
+    const t = (text || '').toLowerCase();
+    if (t.indexOf('good') !== -1 || t.indexOf('normal') !== -1 || t.indexOf('ok') === 0) return 'good';
+    if (t.indexOf('not ') !== -1 || t.indexOf('fail') !== -1 || t.indexOf('fault') !== -1) return 'bad';
+    if (t.indexOf('attention') !== -1 || t.indexOf('observ') !== -1 || t.indexOf('pending') !== -1) return 'warn';
+    return '';
+}
+const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
+function prettyDate(iso) {
+    const m = ISO.exec(iso);
+    if (!m) return escapeHtml(iso);
+    const d = new Date(iso + 'T00:00:00');
+    if (isNaN(d)) return escapeHtml(iso);
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function ddmmyyyy(iso) { const m = ISO.exec(iso); return m ? m[3] + '/' + m[2] + '/' + m[1] : iso; }
+
+/* ---------------- prepare ---------------- */
+function renderHeader(cells) {
+    let html = '<tr>';
+    for (let i = 0; i < cells.length; i++) html += '<th>' + escapeHtml(cells[i]) + '</th>';
+    thead.innerHTML = html + '</tr>';
+}
+
+function prepareRows(values) {
+    header = values[0] || [];
+    const cols = header.length;
+
+    statusCol = remarksCol = -1;
+    for (let i = 0; i < cols; i++) {
+        const h = String(header[i] || '').trim().toLowerCase();
+        if (h === 'generator status') statusCol = i;
+        if (h === 'remarks') remarksCol = i;
+    }
+
+    const prepared = [];
+    for (let i = 1; i < values.length; i++) {
+        const r = values[i];
+        if (!r || !r.length) continue;
+
+        const cells = [];
+        for (let c = 0; c < cols; c++) cells.push(r[c] == null ? '' : String(r[c]));
+
+        let html = '<tr>';
+        for (let c = 0; c < cols; c++) {
+            if (c === statusCol) {
+                html += '<td><span class="badge ' + statusClass(cells[c]) + '">' +
+                        (escapeHtml(cells[c].trim()) || '—') + '</span></td>';
+            } else if (c === 1) {
+                html += '<td>' + prettyDate(cells[c]) + '</td>';
+            } else if (c === remarksCol) {
+                html += '<td class="wrap">' + escapeHtml(cells[c]) + '</td>';
+            } else {
+                html += '<td>' + (escapeHtml(cells[c]) || '—') + '</td>';
+            }
+        }
+        html += '</tr>';
+
+        prepared.push({
+            html: html,
+            raw: cells,
+            idx: i,
+            location: cells[0].toLowerCase(),
+            date: cells[1],
+            haystack: cells.join('  ').toLowerCase()
+        });
+    }
+    prepared.reverse();   // newest first, done once
+    return prepared;
+}
+
+/* ---------------- render ---------------- */
+function render(list) {
+    if (!list.length) {
+        tbody.innerHTML = '';
+        stateBox.style.display = 'block';
+        stateBox.innerHTML =
+            '<div class="big"><svg class="i lg" viewBox="0 0 24 24" style="margin:0 auto"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5M9 11h4"/></svg></div>' +
+            '<h3>No matching tests</h3><p>Try a different location, date, or search term.</p>';
+        return;
+    }
+    stateBox.style.display = 'none';
+    const parts = new Array(list.length);
+    for (let i = 0; i < list.length; i++) parts[i] = list[i].html;
+    tbody.innerHTML = parts.join('');
+}
+
+/* ---------------- filter ---------------- */
+function applyFilters() {
+    const q    = searchInput.value.trim().toLowerCase();
+    const loc  = locationSelect.value.toLowerCase();
+    const date = dateInput.value;
+
+    let out = rows;
+    if (loc)  out = out.filter(function (r) { return r.location === loc; });
+    if (date) out = out.filter(function (r) { return r.date === date; });
+    if (q)    out = out.filter(function (r) { return r.haystack.indexOf(q) !== -1; });
+
+    render(out);
+    resultCount.textContent = out.length === rows.length
+        ? rows.length.toLocaleString() + ' tests'
+        : out.length.toLocaleString() + ' of ' + rows.length.toLocaleString() + ' tests';
+}
+
+let debounceTimer;
+searchInput.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(applyFilters, 150);
+});
+locationSelect.addEventListener('change', applyFilters);
+dateInput.addEventListener('input', applyFilters);
+$('clearBtn').addEventListener('click', function () {
+    searchInput.value = ''; locationSelect.value = ''; dateInput.value = '';
+    applyFilters();
+});
+
+// Arrow keys scroll the wide table horizontally (kept from the original page)
+document.addEventListener('keydown', function (e) {
+    const t = e.target;
+    if (t === searchInput || t === dateInput || t === locationSelect) return;
+    if (e.key === 'ArrowRight')     tableWrap.scrollLeft += 60;
+    else if (e.key === 'ArrowLeft') tableWrap.scrollLeft -= 60;
+    else if (e.key === 'Escape') $('monthMenu').classList.remove('open');
+});
+
+/* ---------------- KPIs + location list ---------------- */
+function buildSummary() {
+    $('kpiTotal').textContent = rows.length.toLocaleString();
+
+    const now = new Date();
+    const prefix = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    $('kpiMonth').textContent = rows.filter(function (r) { return r.date.indexOf(prefix) === 0; }).length.toLocaleString();
+    $('kpiMonthFoot').textContent = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+    const seen = Object.create(null), names = [];
+    for (let i = 0; i < rows.length; i++) {
+        const n = rows[i].raw[0].trim();
+        if (n && !seen[n]) { seen[n] = 1; names.push(n); }
+    }
+    $('kpiLoc').textContent = names.length.toLocaleString();
+
+    let latest = '';
+    for (let i = 0; i < rows.length; i++) if (rows[i].date > latest) latest = rows[i].date;
+    if (latest) {
+        $('kpiLatest').textContent = prettyDate(latest);
+        const days = Math.round((Date.now() - new Date(latest + 'T00:00:00')) / 86400000);
+        $('kpiLatestFoot').textContent = days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days + ' days ago';
+    }
+
+    names.sort(function (a, b) { return a.localeCompare(b); });
+    const opts = ['<option value="">All locations</option>'];
+    for (let i = 0; i < names.length; i++) {
+        opts.push('<option value="' + escapeHtml(names[i]) + '">' + escapeHtml(names[i]) + '</option>');
+    }
+    const keep = locationSelect.value;
+    locationSelect.innerHTML = opts.join('');
+    if (keep) locationSelect.value = keep;
+}
+
+/* ================================================================
+   Monthly report - real .xlsx, styled to match the KOC report sheets
+   (an .xlsx is a ZIP of XML parts, so no external library is needed)
+   ================================================================ */
+const MONTHS_LONG = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+                     'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+
+const REPORT_TITLE_1 = 'KUWAIT OIL COMPANY (KOC)';
+const REPORT_TITLE_2 = 'Electrical & Instrumentation Section - Utilities Team E&I I';
+const REPORT_TITLE_3 = 'MONTHLY GENERATOR TEST RUN REPORT as on ';
+
+const CRC_TABLE = (function () {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+    }
+    return t;
+})();
+function crc32(buf) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zipStore(files) {
+    const enc = new TextEncoder();
+    const parts = [], central = [];
+    let offset = 0;
+    const TIME = 0, DATE = 0x2821;
+
+    for (let i = 0; i < files.length; i++) {
+        const nameBytes = enc.encode(files[i].name);
+        const data = files[i].data;
+        const crc = crc32(data);
+
+        const lh = new Uint8Array(30 + nameBytes.length);
+        const lv = new DataView(lh.buffer);
+        lv.setUint32(0, 0x04034b50, true);
+        lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+        lv.setUint16(8, 0, true);
+        lv.setUint16(10, TIME, true); lv.setUint16(12, DATE, true);
+        lv.setUint32(14, crc, true);
+        lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true);
+        lv.setUint16(26, nameBytes.length, true); lv.setUint16(28, 0, true);
+        lh.set(nameBytes, 30);
+
+        const cd = new Uint8Array(46 + nameBytes.length);
+        const cv = new DataView(cd.buffer);
+        cv.setUint32(0, 0x02014b50, true);
+        cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true);
+        cv.setUint16(10, 0, true);
+        cv.setUint16(12, TIME, true); cv.setUint16(14, DATE, true);
+        cv.setUint32(16, crc, true);
+        cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+        cv.setUint16(28, nameBytes.length, true);
+        cv.setUint32(42, offset, true);
+        cd.set(nameBytes, 46);
+
+        parts.push(lh, data);
+        central.push(cd);
+        offset += lh.length + data.length;
+    }
+
+    let cdSize = 0;
+    for (let i = 0; i < central.length; i++) cdSize += central[i].length;
+
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+    ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+
+    const out = new Uint8Array(offset + cdSize + 22);
+    let p = 0;
+    for (let i = 0; i < parts.length; i++)   { out.set(parts[i], p);   p += parts[i].length; }
+    for (let i = 0; i < central.length; i++) { out.set(central[i], p); p += central[i].length; }
+    out.set(eocd, p);
+    return out;
+}
+
+const XML_BAD = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g;
+function xmlEsc(v) {
+    return String(v == null ? '' : v)
+        .replace(/\r\n?/g, '\n').replace(XML_BAD, '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function colLetter(n) {
+    let s = '';
+    while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - 1 - m) / 26; }
+    return s;
+}
+function excelSerial(iso) {
+    const m = ISO.exec(iso);
+    if (!m) return null;
+    return (Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(1899, 11, 30)) / 86400000;
+}
+// Numeric readings are written as real numbers so they can be charted/averaged.
+function asNumber(v) {
+    const s = String(v == null ? '' : v).trim();
+    if (!s) return null;
+    if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+    return Number(s);
+}
+
+const S_TITLE1 = 1, S_TITLE2 = 2, S_TITLE3 = 3,
+      S_HEAD_SR = 4, S_HEAD = 5, S_CENTER = 6, S_LEFT = 7, S_DATE = 8;
+
+const STYLES_XML =
+'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+'<numFmts count="1"><numFmt numFmtId="164" formatCode="[$-409]d\\-mmm\\-yyyy;@"/></numFmts>' +
+'<fonts count="5">' +
+  '<font><sz val="11"/><name val="Calibri"/></font>' +
+  '<font><b/><sz val="16"/><name val="Arial"/></font>' +
+  '<font><b/><sz val="11"/><color rgb="FF000000"/><name val="Calibri"/></font>' +
+  '<font><b/><sz val="11"/><color rgb="FF000000"/><name val="Calibri"/></font>' +
+  '<font><sz val="11"/><name val="Calibri"/></font>' +
+'</fonts>' +
+'<fills count="3">' +
+  '<fill><patternFill patternType="none"/></fill>' +
+  '<fill><patternFill patternType="gray125"/></fill>' +
+  '<fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/><bgColor indexed="64"/></patternFill></fill>' +
+'</fills>' +
+'<borders count="5">' +
+  '<border><left/><right/><top/><bottom/><diagonal/></border>' +
+  '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>' +
+  '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom/><diagonal/></border>' +
+  '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top/><bottom/><diagonal/></border>' +
+  '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top/><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>' +
+'</borders>' +
+'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+'<cellXfs count="9">' +
+  '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+  '<xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' +
+  '<xf numFmtId="0" fontId="1" fillId="0" borderId="3" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' +
+  '<xf numFmtId="0" fontId="1" fillId="0" borderId="4" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' +
+  '<xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+  '<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+  '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" wrapText="1"/></xf>' +
+  '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
+  '<xf numFmtId="164" fontId="4" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top" wrapText="1"/></xf>' +
+'</cellXfs>' +
+'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+'</styleSheet>';
+
+// Sr. # first, then one width per sheet column. Wider for the text columns.
+function columnWidths() {
+    const w = [6.5];
+    for (let i = 0; i < header.length; i++) {
+        const h = String(header[i] || '').trim().toLowerCase();
+        if (i === 0)                     w.push(28);      // Location
+        else if (h === 'date')           w.push(13);
+        else if (h === 'remarks')        w.push(34);
+        else if (h === 'technician' ||
+                 h === 'koc representative' ||
+                 h === 'mode of test' ||
+                 h === 'generator status') w.push(20);
+        else                             w.push(11);      // numeric readings
+    }
+    return w;
+}
+
+function buildSheetXml(list, asOn) {
+    const cols = header.length + 1;                    // + Sr. #
+    const lastCol = colLetter(cols);
+    const lastRow = 4 + list.length;
+    const widths = columnWidths();
+    const x = [];
+
+    x.push('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
+    x.push('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">');
+    x.push('<dimension ref="A1:' + lastCol + lastRow + '"/>');
+    x.push('<sheetViews><sheetView tabSelected="1" workbookViewId="0">' +
+           '<pane xSplit="2" ySplit="4" topLeftCell="C5" activePane="bottomRight" state="frozen"/>' +
+           '</sheetView></sheetViews>');
+    x.push('<sheetFormatPr defaultRowHeight="15"/>');
+
+    x.push('<cols>');
+    for (let i = 0; i < widths.length; i++) {
+        x.push('<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + widths[i] + '" customWidth="1"/>');
+    }
+    x.push('</cols>');
+
+    x.push('<sheetData>');
+
+    const titles = [
+        { text: REPORT_TITLE_1, style: S_TITLE1, h: '21' },
+        { text: REPORT_TITLE_2, style: S_TITLE2, h: '21' },
+        { text: REPORT_TITLE_3 + ddmmyyyy(asOn), style: S_TITLE3, h: '20.25' }
+    ];
+    for (let r = 0; r < 3; r++) {
+        x.push('<row r="' + (r + 1) + '" ht="' + titles[r].h + '" customHeight="1">');
+        for (let c = 1; c <= cols; c++) {
+            const ref = colLetter(c) + (r + 1);
+            if (c === 1) {
+                x.push('<c r="' + ref + '" s="' + titles[r].style + '" t="inlineStr"><is><t xml:space="preserve">' +
+                       xmlEsc(titles[r].text) + '</t></is></c>');
+            } else {
+                x.push('<c r="' + ref + '" s="' + titles[r].style + '"/>');
+            }
+        }
+        x.push('</row>');
+    }
+
+    x.push('<row r="4" ht="34" customHeight="1">');
+    x.push('<c r="A4" s="' + S_HEAD_SR + '" t="inlineStr"><is><t>Sr. #</t></is></c>');
+    for (let c = 0; c < header.length; c++) {
+        x.push('<c r="' + colLetter(c + 2) + '4" s="' + S_HEAD + '" t="inlineStr">' +
+               '<is><t xml:space="preserve">' + xmlEsc(header[c]) + '</t></is></c>');
+    }
+    x.push('</row>');
+
+    for (let i = 0; i < list.length; i++) {
+        const rowNum = i + 5;
+        const cells = list[i].raw;
+        x.push('<row r="' + rowNum + '">');
+        x.push('<c r="A' + rowNum + '" s="' + S_CENTER + '"><v>' + (i + 1) + '</v></c>');
+
+        for (let c = 0; c < header.length; c++) {
+            const ref = colLetter(c + 2) + rowNum;
+            const value = cells[c];
+
+            if (c === 1) {                                   // Date -> a real Excel date
+                const serial = excelSerial(value);
+                if (serial !== null) { x.push('<c r="' + ref + '" s="' + S_DATE + '"><v>' + serial + '</v></c>'); continue; }
+            }
+            const num = (c > 1 && c !== remarksCol) ? asNumber(value) : null;
+            if (num !== null) { x.push('<c r="' + ref + '" s="' + S_CENTER + '"><v>' + num + '</v></c>'); continue; }
+
+            const txt = xmlEsc(value);
+            const style = (c === 0 || c === remarksCol) ? S_LEFT : S_CENTER;
+            if (!txt) x.push('<c r="' + ref + '" s="' + style + '"/>');
+            else x.push('<c r="' + ref + '" s="' + style + '" t="inlineStr"><is><t xml:space="preserve">' + txt + '</t></is></c>');
+        }
+        x.push('</row>');
+    }
+    x.push('</sheetData>');
+
+    x.push('<mergeCells count="3">' +
+           '<mergeCell ref="A1:' + lastCol + '1"/>' +
+           '<mergeCell ref="A2:' + lastCol + '2"/>' +
+           '<mergeCell ref="A3:' + lastCol + '3"/></mergeCells>');
+    x.push('<pageMargins left="0" right="0" top="0.25" bottom="0.25" header="0.3" footer="0.3"/>');
+    x.push('<pageSetup orientation="landscape" scale="55"/>');
+    x.push('</worksheet>');
+    return x.join('');
+}
+
+function buildWorkbook(list, asOn) {
+    const enc = new TextEncoder();
+    const f = function (name, str) { return { name: name, data: enc.encode(str) }; };
+
+    return zipStore([
+        f('[Content_Types].xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+            '<Default Extension="xml" ContentType="application/xml"/>' +
+            '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+            '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+            '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+            '</Types>'),
+        f('_rels/.rels',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+            '</Relationships>'),
+        f('xl/workbook.xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+            '<sheets><sheet name="GENERATOR TEST" sheetId="1" r:id="rId1"/></sheets>' +
+            '<definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">' +
+            "'GENERATOR TEST'!$4:$4</definedName></definedNames>" +
+            '</workbook>'),
+        f('xl/_rels/workbook.xml.rels',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+            '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+            '</Relationships>'),
+        f('xl/styles.xml', STYLES_XML),
+        f('xl/worksheets/sheet1.xml', buildSheetXml(list, asOn))
+    ]);
+}
+
+function availableMonths() {
+    const counts = Object.create(null);
+    for (let i = 0; i < rows.length; i++) {
+        const d = rows[i].date;
+        if (ISO.test(d)) { const k = d.slice(0, 7); counts[k] = (counts[k] || 0) + 1; }
+    }
+    return Object.keys(counts).sort().reverse().map(function (k) { return { key: k, count: counts[k] }; });
+}
+function monthLabel(key) {
+    const n = MONTHS_LONG[+key.slice(5, 7) - 1];
+    return n.charAt(0) + n.slice(1).toLowerCase() + ' ' + key.slice(0, 4);
+}
+function buildMonthMenu() {
+    const months = availableMonths();
+    const parts = ['<div class="menu-head">Select month</div>'];
+    if (!months.length) parts.push('<div class="empty">No dated tests available.</div>');
+    else for (let i = 0; i < months.length; i++) {
+        parts.push('<button type="button" data-month="' + months[i].key + '">' +
+                   '<span>' + monthLabel(months[i].key) + '</span>' +
+                   '<span class="cnt">' + months[i].count + ' tests</span></button>');
+    }
+    $('monthMenu').innerHTML = parts.join('');
+}
+
+function downloadMonthlyReport(key) {
+    const list = rows.filter(function (r) { return r.date.slice(0, 7) === key; });
+    list.sort(function (a, b) {
+        if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+        return a.idx - b.idx;
+    });
+    if (!list.length) return;
+
+    const asOn = list[list.length - 1].date;
+    const bytes = buildWorkbook(list, asOn);
+
+    const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'GENERATOR TEST ' + MONTHS_LONG[+key.slice(5, 7) - 1] + ' ' + key.slice(0, 4) + '.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+$('reportBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    const menu = $('monthMenu');
+    if (!menu.classList.contains('open')) buildMonthMenu();
+    menu.classList.toggle('open');
+});
+$('monthMenu').addEventListener('click', function (e) {
+    const btn = e.target.closest('button[data-month]');
+    if (!btn) return;
+    downloadMonthlyReport(btn.getAttribute('data-month'));
+    $('monthMenu').classList.remove('open');
+});
+document.addEventListener('click', function () { $('monthMenu').classList.remove('open'); });
+
+/* ---------------- cache + load ---------------- */
+function readCache()  { try { return localStorage.getItem(CACHE_KEY); } catch (e) { return null; } }
+function writeCache(t){ try { localStorage.setItem(CACHE_KEY, t); }    catch (e) {} }
+
+function applyValues(values) {
+    if (!values || !values.length) return false;
+    rows = prepareRows(values);
+    renderHeader(header);
+    buildSummary();
+    applyFilters();
+    return true;
+}
+
+async function init() {
+    const cached = readCache();
+    let cachedText = null;
+    if (cached) {
+        try {
+            if (applyValues(JSON.parse(cached))) {
+                cachedText = cached;
+                syncText.textContent = 'Checking for updates…';
+                liveDot.style.background = 'var(--warn)';
+                liveDot.style.boxShadow = '0 0 9px var(--warn)';
+            }
+        } catch (e) { cachedText = null; }
+    }
+
+    try {
+        const data = await networkPromise;
+        if (data.error) throw new Error(data.error.message || 'API error');
+
+        const values = data.values || [];
+        const text = JSON.stringify(values);
+        if (text !== cachedText) { applyValues(values); writeCache(text); }
+
+        liveDot.style.background = 'var(--good)';
+        liveDot.style.boxShadow = '0 0 9px var(--good)';
+        syncText.textContent = 'Synced ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (err) {
+        console.error('Error fetching sheet data:', err);
+        liveDot.style.background = 'var(--bad)';
+        liveDot.style.boxShadow = '0 0 9px var(--bad)';
+        if (cachedText) {
+            syncText.textContent = 'Offline — saved data';
+        } else {
+            syncText.textContent = 'Connection failed';
+            stateBox.style.display = 'block';
+            stateBox.innerHTML =
+                '<div class="big"><svg class="i lg" viewBox="0 0 24 24" style="margin:0 auto"><path d="M12 3.5L1.8 20.5h20.4z"/><path d="M12 9.5v4.5M12 17.4v.1"/></svg></div>' +
+                '<h3>Could not load the test data</h3>' +
+                '<p>Check your network connection and refresh the page.</p>';
+        }
+    }
+}
+
+init();
+</script>
+
+</body>
+</html>

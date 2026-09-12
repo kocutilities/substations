@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enter Daily Job Report · Substations &amp; Generators</title>
+
+<style>
+/* ============================================================
+   Design tokens - shared with the other dashboard pages
+   ============================================================ */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;
+    --good-soft:     rgba(52,211,153,.14);
+    --warn:          #fbbf24;
+    --warn-soft:     rgba(251,191,36,.14);
+    --bad:           #f87171;
+    --bad-soft:      rgba(248,113,113,.14);
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        18px;
+    --sidebar-w:     252px;
+}
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #eef1f8;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f5f7fc;
+    --surface-3:     #eaeefa;
+    --border:        rgba(15,23,42,.10);
+    --border-strong: rgba(15,23,42,.18);
+    --text:          #0f172a;
+    --text-dim:      #55627d;
+    --text-faint:    #7c88a3;
+    --accent:        #2f5fe0;
+    --accent-2:      #7c3aed;
+    --accent-soft:   rgba(47,95,224,.10);
+    --good:          #059669;
+    --good-soft:     rgba(5,150,105,.11);
+    --warn:          #b45309;
+    --warn-soft:     rgba(180,83,9,.11);
+    --bad:           #dc2626;
+    --bad-soft:      rgba(220,38,38,.10);
+    --shadow:        0 16px 34px -20px rgba(15,23,42,.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+body::before {
+    content: ''; position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(76,125,255,.20), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(139,92,246,.15), transparent 60%);
+}
+html[data-theme="light"] body::before {
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(47,95,224,.11), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(124,58,237,.09), transparent 60%);
+}
+
+/* ============================================================ Shell */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+.sidebar {
+    width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+    background: var(--bg-elev); border-right: 1px solid var(--border);
+    padding: 20px 14px; display: flex; flex-direction: column; gap: 22px;
+    position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+.brand-badge {
+    width: 42px; height: 42px; flex: 0 0 42px; border-radius: 12px;
+    background: linear-gradient(150deg, #1c2f5d, #3f1e5a);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 16px -6px rgba(76,125,255,.7);
+}
+.brand-badge img { width: 27px; height: auto; display: block; }
+.brand-name { font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+.brand-sub  { font-size: 11px; color: var(--text-faint); }
+
+.nav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 0 10px; margin-bottom: 7px;
+}
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 10px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border: 1px solid transparent; transition: background .16s, color .16s;
+}
+.nav a:hover { background: var(--surface-2); color: var(--text); }
+.nav a.active {
+    background: var(--accent-soft); color: var(--text);
+    border-color: rgba(76,125,255,.30); font-weight: 600;
+}
+.nav a .ico { display: grid; place-items: center; flex: 0 0 18px; opacity: .9; }
+.nav a.active .ico { opacity: 1; color: var(--accent); }
+
+svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+
+.side-foot { margin-top: auto; }
+.side-card {
+    border-radius: 14px; padding: 14px;
+    background: linear-gradient(150deg, rgba(76,125,255,.20), rgba(139,92,246,.16));
+    border: 1px solid var(--border-strong);
+}
+.side-card h4 { margin: 0 0 3px; font-size: 12.5px; }
+.side-card p  { margin: 0; font-size: 11px; color: var(--text-dim); }
+
+/* ============================================================ Main */
+.main { flex: 1; min-width: 0; padding: 22px 26px 40px; }
+.wrap { max-width: 940px; }
+
+.topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.page-title { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: -.3px; }
+.page-sub   { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+
+button, .btn {
+    font-family: inherit; font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: background .16s, border-color .16s, transform .12s;
+}
+button:hover, .btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 22px -12px rgba(76,125,255,.95);
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.icon-btn { padding: 9px 11px; }
+
+/* Form sections */
+.section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 18px 18px 20px; margin-bottom: 16px;
+}
+.section > h2 {
+    margin: 0 0 3px; font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+}
+.section > h2 .num {
+    width: 22px; height: 22px; flex: 0 0 22px; border-radius: 7px;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700;
+}
+.section > .desc { margin: 0 0 15px 31px; font-size: 12px; color: var(--text-faint); }
+
+.grid { display: grid; gap: 13px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field label {
+    font-size: 11.5px; font-weight: 600; color: var(--text-dim);
+    display: flex; align-items: center; gap: 5px;
+}
+.field label .req { color: var(--accent); }
+.field .hint { margin-left: auto; font-size: 10.5px; color: var(--text-faint); font-weight: 500; }
+
+input, select, textarea {
+    font-family: inherit; font-size: 13.5px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 10px 12px;
+    outline: none; width: 100%;
+    transition: border-color .16s, box-shadow .16s;
+}
+select { cursor: pointer; }
+input:focus, select:focus, textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+input::placeholder, textarea::placeholder { color: var(--text-faint); }
+input:user-invalid, select:user-invalid, textarea:user-invalid { border-color: var(--bad); }
+textarea { resize: vertical; line-height: 1.55; }
+textarea#jobDescription { min-height: 62px; }
+textarea#jobReport { min-height: 168px; }
+textarea#remarks { min-height: 62px; }
+
+/* Technician tick-boxes - replaces the ctrl+click multi-select */
+.checks { display: flex; flex-wrap: wrap; gap: 9px; }
+.check {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px 9px 11px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    cursor: pointer; font-size: 13px; user-select: none;
+    transition: background .15s, border-color .15s, color .15s;
+}
+.check:hover { border-color: var(--border-strong); }
+.check input {
+    width: 16px; height: 16px; margin: 0; padding: 0;
+    accent-color: var(--accent); cursor: pointer; flex: 0 0 16px;
+}
+.check.on {
+    background: var(--accent-soft);
+    border-color: rgba(76,125,255,.45);
+    color: var(--text); font-weight: 600;
+}
+.picked { font-size: 11.5px; color: var(--text-faint); margin-top: 9px; }
+.picked b { color: var(--text-dim); font-weight: 600; }
+
+/* Submit bar */
+.submit-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 15px 18px;
+}
+.submit-bar .spacer { flex: 1 1 auto; }
+.submit-bar button[type="submit"] { padding: 11px 22px; font-size: 14px; }
+
+.status { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.status.ok   { color: var(--good); }
+.status.err  { color: var(--bad); }
+.status.busy { color: var(--text-dim); }
+.spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border-strong); border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.menu-btn { display: none; }
+.backdrop { display: none; }
+
+@media (max-width: 1000px) {
+    .sidebar {
+        position: fixed; z-index: 50; left: 0; top: 0;
+        transform: translateX(-100%); transition: transform .22s ease;
+        box-shadow: 0 0 50px rgba(0,0,0,.5);
+    }
+    .sidebar.open { transform: none; }
+    .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
+    .menu-btn { display: inline-flex; }
+    .main { padding: 16px 15px 34px; }
+}
+@media (max-width: 560px) {
+    .page-title { font-size: 19px; }
+    .hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="app">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-badge"><img src="assets/koc-logo.png" alt="KOC"></div>
+            <div>
+                <div class="brand-name">Substations &amp; Generators</div>
+                <div class="brand-sub">Utilities Team E&amp;I I</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">View</div>
+            <nav class="nav">
+                <a href="View_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 11h6M9 15h4"/></svg></span> Daily Job Reports</a>
+                <a href="View_Generator_Test_Data.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></span> Generator Test Data</a>
+                <a href="kWh_display.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg></span> kWh Data</a>
+                <a href="Generator_details.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span> Generator Details</a>
+                <a href="Substations_Ele_Rooms.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M8 9V5h8v4M8 14h8M8 17.5h5"/></svg></span> Substations &amp; Ele. Rooms</a>
+                <a href="dashboard.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Dashboard</a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Enter Data</div>
+            <nav class="nav">
+                <a class="active" href="#"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Daily Job Report</a>
+                <a href="Enter_Generator_Test.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Generator Test Run</a>
+                <a href="kWh_Reading.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> kWh Readings</a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                <h4>Corporate Services Group</h4>
+                <p>Electrical &amp; Instrumentation Section</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+      <div class="wrap">
+
+        <div class="topbar">
+            <div style="display:flex; align-items:flex-start; gap:11px;">
+                <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+                <div>
+                    <h1 class="page-title">Enter Daily Job Report</h1>
+                    <p class="page-sub">Substations &amp; Generators Team — job status log</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark" type="button"></button>
+                <a class="btn btn-primary" href="home.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> <span class="hide-sm">Home</span></a>
+            </div>
+        </div>
+
+        <form id="jobReportForm"
+              action="https://script.google.com/macros/s/AKfycbx_RK2i10VsSQRz2RE2g1KkRTrPI-i_yBjS4jQpTHUD8A63M8LaMDC_ui5pwK-5y5vH/exec"
+              method="POST">
+
+            <section class="section">
+                <h2><span class="num">1</span> Job Details</h2>
+                <p class="desc">Where the work was done, when, and what prompted it.</p>
+                <div class="grid">
+                    <div class="field">
+                        <label for="location">Location <span class="req">*</span></label>
+                        <select id="location" name="location" required>
+                            <option value="">Select a location</option>
+                            <option value="160 Villa's S/S - S1">160 Villa's S/S - S1</option>
+                            <option value="160 Villa's S/S - S2">160 Villa's S/S - S2</option>
+                            <option value="160 Villa's S/S - S3">160 Villa's S/S - S3</option>
+                            <option value="2nd Avenue New Office S/S">2nd Avenue New Office S/S</option>
+                            <option value="Ahmad Al Jaber Exhibition">Ahmad Al Jaber Exhibition</option>
+                            <option value="Ahmadi Park S/S - 1">Ahmadi Park S/S - 1</option>
+                            <option value="Ahmadi Park S/S - 2">Ahmadi Park S/S - 2</option>
+                            <option value="Al Tameer Yellow Building">Al Tameer Yellow Building</option>
+                            <option value="Computer Center">Computer Center</option>
+                            <option value="CSG S/S">CSG S/S</option>
+                            <option value="Ex-Anglo American School">Ex-Anglo American School</option>
+                            <option value="Fire Team (Amira Court B)">Fire Team (Amira Court B)</option>
+                            <option value="Guest House">Guest House</option>
+                            <option value="Hanger 140">Hanger 140</option>
+                            <option value="Hanger 150">Hanger 150</option>
+                            <option value="KGOC S/S">KGOC S/S</option>
+                            <option value="KOC Main Office">KOC Main Office</option>
+                            <option value="KOC Mega Complex">KOC Mega Complex</option>
+                            <option value="KOC New IT">KOC New IT</option>
+                            <option value="KPC New S/S">KPC New S/S</option>
+                            <option value="Office Complex S/S 1">Office Complex S/S 1</option>
+                            <option value="Office Complex S/S 2">Office Complex S/S 2</option>
+                            <option value="Office Complex S/S 3">Office Complex S/S 3</option>
+                            <option value="Petrol Filling Station">Petrol Filling Station</option>
+                            <option value="PHQ">PHQ</option>
+                            <option value="Radio Station">Radio Station</option>
+                            <option value="Security Center">Security Center</option>
+                            <option value="Substations">Substations</option>
+                            <option value="White House">White House</option>
+                            <option value="Another Location">Another Location</option>
+                        </select>
+                        <input type="text" id="customLocation" name="customLocation"
+                               placeholder="Enter the location name" autocomplete="off"
+                               style="display:none; margin-top:6px;">
+                    </div>
+
+                    <div class="field">
+                        <label for="date">Date <span class="req">*</span></label>
+                        <input type="date" id="date" name="date" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="reference">Reference <span class="req">*</span></label>
+                        <select id="reference" name="reference" required>
+                            <option value="As per schedule">As per schedule</option>
+                            <option value="Modification">Modification</option>
+                            <option value="New Job">New Job</option>
+                            <option value="HSE Implementation">HSE Implementation</option>
+                            <option value="Call">Call</option>
+                            <option value="PM">PM</option>
+                            <option value="CM">CM</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <input type="text" id="customReference" name="customReference"
+                               placeholder="Enter the reference" autocomplete="off"
+                               style="display:none; margin-top:6px;">
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2><span class="num">2</span> Work Carried Out</h2>
+                <p class="desc">A short description, then the full report as it should appear in the record.</p>
+                <div class="grid">
+                    <div class="field full">
+                        <label for="jobDescription">Job Description <span class="req">*</span>
+                            <span class="hint">short — e.g. "Housekeeping", "Lamp replaced"</span>
+                        </label>
+                        <textarea id="jobDescription" name="jobDescription" required
+                                  placeholder="Housekeeping"></textarea>
+                    </div>
+                    <div class="field full">
+                        <label for="jobReport">Job Report <span class="req">*</span>
+                            <span class="hint">line breaks are preserved</span>
+                        </label>
+                        <textarea id="jobReport" name="jobReport" required
+                                  placeholder="Carried out battery maintenance and housekeeping."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2><span class="num">3</span> Team &amp; Remarks</h2>
+                <p class="desc">Tick everyone who attended. Add anyone not listed in the box below.</p>
+
+                <div class="field" style="margin-bottom:14px;">
+                    <label>Technician(s) <span class="req">*</span></label>
+                    <div class="checks" id="techChecks">
+                        <label class="check"><input type="checkbox" name="technicians" value="Tayyab"> Mohd. Tayyab</label>
+                        <label class="check"><input type="checkbox" name="technicians" value="Vijayakumar"> Vijayakumar</label>
+                        <label class="check"><input type="checkbox" name="technicians" value="Jagan"> Jagan A</label>
+                        <label class="check"><input type="checkbox" name="technicians" value="Asad"> Asad Ali</label>
+                        <label class="check"><input type="checkbox" name="technicians" value="Liman"> Mohd. Liman</label>
+                    </div>
+                    <div class="picked" id="techPicked">No technician selected yet.</div>
+                </div>
+
+                <div class="grid">
+                    <div class="field">
+                        <label for="otherTechnician">Other Technician</label>
+                        <input type="text" id="otherTechnician" name="otherTechnician"
+                               placeholder="Name of anyone not listed above" autocomplete="off">
+                    </div>
+                    <div class="field">
+                        <label for="remarks">Remarks</label>
+                        <textarea id="remarks" name="remarks" placeholder="Completed"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <div class="submit-bar">
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Submit Job Report
+                </button>
+                <button type="button" id="resetBtn">Clear Form</button>
+                <span class="spacer"></span>
+                <span class="status" id="status"></span>
+            </div>
+        </form>
+
+      </div>
+    </main>
+</div>
+
+<script>
+const $ = function (id) { return document.getElementById(id); };
+const form = $('jobReportForm');
+
+/* ---------------- theme ---------------- */
+const ICON_MOON = '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const ICON_SUN  = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/>' +
+                  '<path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+(function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('jobReports.theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon();
+})();
+function updateThemeIcon() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('themeBtn').innerHTML = dark ? ICON_SUN : ICON_MOON;
+}
+$('themeBtn').addEventListener('click', function () {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('jobReports.theme', next); } catch (e) {}
+    updateThemeIcon();
+});
+
+/* ---------------- mobile nav ---------------- */
+$('menuBtn').addEventListener('click', function () {
+    $('sidebar').classList.add('open'); $('backdrop').classList.add('show');
+});
+$('backdrop').addEventListener('click', function () {
+    $('sidebar').classList.remove('open'); $('backdrop').classList.remove('show');
+});
+
+function escapeHtml(v) {
+    const E = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+    return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return E[c]; });
+}
+
+/* ---------------- conditional "other" boxes ---------------- */
+function wireOther(selectId, triggerValue, inputId) {
+    const sel = $(selectId), inp = $(inputId);
+    function sync() {
+        const on = sel.value === triggerValue;
+        inp.style.display = on ? 'block' : 'none';
+        inp.required = on;
+        if (!on) inp.value = '';
+    }
+    sel.addEventListener('change', function () { sync(); if (sel.value === triggerValue) inp.focus(); });
+    return sync;
+}
+const syncLocation  = wireOther('location',  'Another Location', 'customLocation');
+const syncReference = wireOther('reference', 'Other',            'customReference');
+
+/* ---------------- technician tick-boxes ----------------
+   Checkboxes all share the name "technicians", so FormData.getAll() returns
+   the same list the old multi-select produced.                            */
+const techBoxes = Array.prototype.slice.call(document.querySelectorAll('#techChecks input'));
+
+function selectedTechnicians() {
+    return techBoxes.filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
+}
+function syncTech() {
+    techBoxes.forEach(function (b) { b.closest('.check').classList.toggle('on', b.checked); });
+
+    const picked = selectedTechnicians();
+    const other = $('otherTechnician').value.trim();
+    const all = other ? picked.concat([other]) : picked;
+
+    $('techPicked').innerHTML = all.length
+        ? '<b>' + all.length + ' selected:</b> ' + escapeHtml(all.join(', '))
+        : 'No technician selected yet.';
+
+    // At least one technician is required; the browser enforces it on the
+    // first box once nothing else is ticked and no other name is typed.
+    techBoxes[0].required = all.length === 0;
+    techBoxes[0].setCustomValidity(all.length === 0 ? 'Select at least one technician.' : '');
+}
+techBoxes.forEach(function (b) { b.addEventListener('change', syncTech); });
+$('otherTechnician').addEventListener('input', syncTech);
+
+/* ---------------- defaults ---------------- */
+function setToday() {
+    const d = new Date();
+    const p = function (n) { return String(n).padStart(2, '0'); };
+    $('date').value = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+setToday();
+syncTech();
+
+/* ---------------- submit ---------------- */
+const statusEl = $('status');
+function setStatus(kind, text, spinner) {
+    statusEl.className = 'status ' + (kind || '');
+    statusEl.innerHTML = (spinner ? '<span class="spin"></span>' : '') + escapeHtml(text);
+}
+
+function resetAll() {
+    form.reset();
+    syncLocation(); syncReference(); syncTech();
+    setToday();
+}
+$('resetBtn').addEventListener('click', function () { resetAll(); setStatus('', ''); });
+
+form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    syncTech();
+    if (!form.reportValidity()) return;
+
+    const btn = $('submitBtn');
+    btn.disabled = true;
+    setStatus('busy', 'Submitting…', true);
+
+    // Same payload the original page sent: the custom values overwrite
+    // "location" / "reference", and technicians is one comma-joined string.
+    const formData = new FormData(form);
+
+    if (formData.get('location') === 'Another Location') {
+        const custom = $('customLocation').value.trim();
+        if (custom) formData.set('location', custom);
+    }
+    if (formData.get('reference') === 'Other') {
+        const custom = $('customReference').value.trim();
+        if (custom) formData.set('reference', custom);
+    }
+
+    const techs = selectedTechnicians();
+    const other = $('otherTechnician').value.trim();
+    if (other) techs.push(other);
+    formData.set('technicians', techs.join(', '));
+
+    const savedLocation = formData.get('location');
+
+    fetch(form.action, { method: 'POST', body: formData })
+        .then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then(function (data) {
+            if (data && data.result === 'success') {
+                resetAll();
+                setStatus('ok', 'Saved — ' + savedLocation + ' recorded.');
+            } else {
+                throw new Error('Unexpected response');
+            }
+        })
+        .catch(function (error) {
+            console.error('Error:', error);
+            setStatus('err', 'Could not submit. Check your connection and try again.');
+        })
+        .finally(function () { btn.disabled = false; });
+});
+</script>
+
+</body>
+</html>

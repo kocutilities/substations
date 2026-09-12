@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Substations &amp; Electrical Rooms · Substations &amp; Generators</title>
+
+<style>
+/* ============================================================
+   Design tokens - shared with the other pages in this folder
+   ============================================================ */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;
+    --good-soft:     rgba(52,211,153,.14);
+    --warn:          #fbbf24;
+    --warn-soft:     rgba(251,191,36,.14);
+    --bad:           #f87171;
+    --bad-soft:      rgba(248,113,113,.14);
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        18px;
+    --sidebar-w:     252px;
+}
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #eef1f8;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f5f7fc;
+    --surface-3:     #eaeefa;
+    --border:        rgba(15,23,42,.10);
+    --border-strong: rgba(15,23,42,.18);
+    --text:          #0f172a;
+    --text-dim:      #55627d;
+    --text-faint:    #7c88a3;
+    --accent:        #2f5fe0;
+    --accent-2:      #7c3aed;
+    --accent-soft:   rgba(47,95,224,.10);
+    --good:          #059669;
+    --good-soft:     rgba(5,150,105,.11);
+    --warn:          #b45309;
+    --warn-soft:     rgba(180,83,9,.11);
+    --bad:           #dc2626;
+    --bad-soft:      rgba(220,38,38,.10);
+    --shadow:        0 16px 34px -20px rgba(15,23,42,.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(76,125,255,.20), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(139,92,246,.15), transparent 60%);
+}
+html[data-theme="light"] body::before {
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(47,95,224,.11), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(124,58,237,.09), transparent 60%);
+}
+
+/* ============================================================ Shell */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+.sidebar {
+    width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    padding: 20px 14px;
+    display: flex; flex-direction: column; gap: 22px;
+    position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+.brand-badge {
+    width: 42px; height: 42px; flex: 0 0 42px;
+    border-radius: 12px;
+    background: linear-gradient(150deg, #1c2f5d, #3f1e5a);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 16px -6px rgba(76,125,255,.7);
+}
+.brand-badge img { width: 27px; height: auto; display: block; }
+.brand-name { font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+.brand-sub  { font-size: 11px; color: var(--text-faint); }
+
+.nav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 0 10px; margin-bottom: 7px;
+}
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 10px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border: 1px solid transparent;
+    transition: background .16s, color .16s;
+}
+.nav a:hover { background: var(--surface-2); color: var(--text); }
+.nav a.active {
+    background: var(--accent-soft); color: var(--text);
+    border-color: rgba(76,125,255,.30); font-weight: 600;
+}
+.nav a .ico { display: grid; place-items: center; flex: 0 0 18px; opacity: .9; }
+.nav a.active .ico { opacity: 1; color: var(--accent); }
+
+svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+
+.side-foot { margin-top: auto; }
+.side-card {
+    border-radius: 14px; padding: 14px;
+    background: linear-gradient(150deg, rgba(76,125,255,.20), rgba(139,92,246,.16));
+    border: 1px solid var(--border-strong);
+}
+.side-card h4 { margin: 0 0 3px; font-size: 12.5px; }
+.side-card p  { margin: 0; font-size: 11px; color: var(--text-dim); }
+
+/* ============================================================ Main */
+.main { flex: 1; min-width: 0; padding: 22px 26px 34px; }
+
+.topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.page-title { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: -.3px; }
+.page-sub   { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+
+.chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 13px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 12.5px; color: var(--text-dim); white-space: nowrap;
+}
+
+button, .btn {
+    font-family: inherit; font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: background .16s, border-color .16s, transform .12s;
+}
+button:hover, .btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:active { transform: translateY(1px); }
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 22px -12px rgba(76,125,255,.95);
+}
+.btn-primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.icon-btn { padding: 9px 11px; }
+
+/* KPI cards */
+.kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+    gap: 13px; margin-bottom: 16px;
+}
+.kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 17px;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.kpi::after {
+    content: ''; position: absolute; right: -34px; top: -34px;
+    width: 108px; height: 108px; border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft), transparent 70%);
+}
+.kpi-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--text-faint); font-weight: 600; margin-bottom: 9px;
+}
+.kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -.5px; line-height: 1.15; }
+.kpi-foot { font-size: 11.5px; color: var(--text-dim); margin-top: 5px; }
+
+.panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.toolbar {
+    padding: 14px 16px; display: flex; flex-wrap: wrap;
+    gap: 10px; align-items: center; margin-bottom: 14px;
+}
+.field { position: relative; display: flex; align-items: center; }
+.field .fico { position: absolute; left: 11px; color: var(--text-faint); pointer-events: none; }
+input[type="text"], select {
+    font-family: inherit; font-size: 13px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 9px 12px; outline: none;
+    transition: border-color .16s, box-shadow .16s;
+}
+input[type="text"] { padding-left: 32px; width: 260px; }
+select { min-width: 178px; cursor: pointer; }
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input::placeholder { color: var(--text-faint); }
+.spacer { flex: 1 1 auto; }
+.result-count { font-size: 12.5px; color: var(--text-dim); white-space: nowrap; }
+
+/* ============================================================ Table */
+.table-wrap { overflow: auto; max-height: calc(100vh - 336px); border-radius: var(--radius); }
+table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 900px; }
+
+thead th {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--surface-3); color: var(--text-dim);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; text-align: left;
+    padding: 12px 13px; white-space: nowrap;
+    border-bottom: 1px solid var(--border-strong);
+}
+tbody td {
+    padding: 10px 13px; border-bottom: 1px solid var(--border);
+    font-size: 13px; color: var(--text-dim); vertical-align: top;
+}
+tbody tr.site-start td { border-top: 1px solid var(--border-strong); }
+tbody tr:hover td { background: var(--surface-2); }
+tbody tr:last-child td { border-bottom: none; }
+
+td.c-sr  { color: var(--text-faint); font-variant-numeric: tabular-nums; width: 46px; }
+td.c-loc { color: var(--text); font-weight: 600; min-width: 186px; }
+td.c-brd { color: var(--text); font-weight: 500; min-width: 168px; }
+td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
+.sub-line {
+    display: block; font-weight: 400; font-size: 11.5px;
+    color: var(--text-faint); margin-top: 2px;
+}
+.dash { color: var(--text-faint); }
+
+.badge {
+    display: inline-block; padding: 4px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; white-space: nowrap;
+    background: var(--surface-3); color: var(--text-dim); border: 1px solid var(--border);
+}
+.badge.ss   { background: var(--accent-soft); color: var(--accent);  border-color: transparent; }
+.badge.gen  { background: var(--good-soft);   color: var(--good);    border-color: transparent; }
+.badge.none { background: var(--surface-3);   color: var(--text-faint); }
+
+.panel-head {
+    padding: 13px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-faint);
+}
+.panel-head .note {
+    text-transform: none; letter-spacing: 0; font-weight: 400;
+    font-size: 11.5px; color: var(--text-dim);
+}
+.query-line {
+    display: block; font-weight: 400; font-size: 11px;
+    color: var(--warn); margin-top: 3px; max-width: 260px;
+    text-transform: none; letter-spacing: 0; white-space: normal;
+}
+
+.state { padding: 54px 20px; text-align: center; color: var(--text-dim); }
+.state h3 { margin: 0 0 5px; color: var(--text); font-size: 15px; }
+.state p  { margin: 0; font-size: 13px; }
+
+.menu-btn { display: none; }
+.backdrop { display: none; }
+
+@media (max-width: 1000px) {
+    .sidebar {
+        position: fixed; z-index: 50; left: 0; top: 0;
+        transform: translateX(-100%); transition: transform .22s ease;
+        box-shadow: 0 0 50px rgba(0,0,0,.5);
+    }
+    .sidebar.open { transform: none; }
+    .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
+    .menu-btn { display: inline-flex; }
+    .main { padding: 16px 15px 30px; }
+    .table-wrap { max-height: none; }
+    input[type="text"] { width: 100%; }
+    .field, select { flex: 1 1 190px; }
+}
+@media (max-width: 560px) {
+    .page-title { font-size: 19px; }
+    .kpi-value { font-size: 22px; }
+    .hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="app">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-badge"><img src="assets/koc-logo.png" alt="KOC"></div>
+            <div>
+                <div class="brand-name">Substations &amp; Generators</div>
+                <div class="brand-sub">Utilities Team E&amp;I I</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">View</div>
+            <nav class="nav">
+                <a href="View_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 11h6M9 15h4"/></svg></span> Daily Job Reports</a>
+                <a href="View_Generator_Test_Data.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></span> Generator Test Data</a>
+                <a href="kWh_display.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg></span> kWh Data</a>
+                <a href="Generator_details.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span> Generator Details</a>
+                <a class="active" href="#"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M8 9V5h8v4M8 14h8M8 17.5h5"/></svg></span> Substations &amp; Ele. Rooms</a>
+                <a href="dashboard.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Dashboard</a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Enter Data</div>
+            <nav class="nav">
+                <a href="Enter_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Daily Job Report</a>
+                <a href="Enter_Generator_Test.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Generator Test Run</a>
+                <a href="kWh_Reading.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> kWh Readings</a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                <h4>Corporate Services Group</h4>
+                <p>Electrical &amp; Instrumentation Section</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+            <div style="display:flex; align-items:flex-start; gap:11px;">
+                <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+                <div>
+                    <h1 class="page-title">Substations &amp; Electrical Rooms</h1>
+                    <p class="page-sub">Panel boards, ratings, makes and standby generation</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <span class="chip hide-sm">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M14 3H6v18h12V8z"/></svg>
+                    Substations list, 12 Sep 2026
+                </span>
+                <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark"></button>
+                <a class="btn btn-primary" href="home.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> <span class="hide-sm">Home</span></a>
+            </div>
+        </div>
+
+        <section class="kpis">
+            <div class="kpi">
+                <div class="kpi-label">Sites</div>
+                <div class="kpi-value" id="kpiSites">&mdash;</div>
+                <div class="kpi-foot">Substations and electrical rooms</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Substations</div>
+                <div class="kpi-value" id="kpiSS">&mdash;</div>
+                <div class="kpi-foot">With HT and LT switchgear</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Electrical Rooms</div>
+                <div class="kpi-value" id="kpiER">&mdash;</div>
+                <div class="kpi-foot" id="kpiERFoot">&nbsp;</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Panel Boards</div>
+                <div class="kpi-value" id="kpiBoards">&mdash;</div>
+                <div class="kpi-foot">Listed across all sites</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Standby Generators</div>
+                <div class="kpi-value" id="kpiGen">&mdash;</div>
+                <div class="kpi-foot" id="kpiGenFoot">&nbsp;</div>
+            </div>
+        </section>
+
+        <section class="panel toolbar">
+            <div class="field">
+                <span class="fico"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+                <input type="text" id="searchInput" placeholder="Search site, board, rating, make&hellip;" autocomplete="off">
+            </div>
+            <select id="typeFilter" aria-label="Filter by type">
+                <option value="">All types</option>
+                <option value="Substation">Substation</option>
+                <option value="Electrical Room">Electrical Room</option>
+            </select>
+            <select id="genFilter" aria-label="Filter by generator">
+                <option value="">All sites</option>
+                <option value="yes">With generator</option>
+                <option value="no">No generator</option>
+            </select>
+            <button id="clearBtn">Clear</button>
+            <span class="spacer"></span>
+            <span class="result-count" id="resultCount">&nbsp;</span>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head">
+                Substations &amp; electrical rooms
+                <span class="note">Substations list of 12 Sep 2026, with corrections advised 12 Sep 2026</span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Sr</th>
+                            <th>Substation location</th>
+                            <th>Panel board</th>
+                            <th>Rating</th>
+                            <th>Make</th>
+                            <th>Type</th>
+                            <th>Generator</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+            <div class="state" id="emptyState" hidden>
+                <h3>Nothing matches</h3>
+                <p>Try a different search or clear the filters.</p>
+            </div>
+        </section>
+
+
+    </main>
+</div>
+
+<script>
+const $ = function (id) { return document.getElementById(id); };
+
+/* ---------------- theme ---------------- */
+const ICON_MOON = '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const ICON_SUN  = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/>' +
+                  '<path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+
+function updateThemeIcon() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('themeBtn').innerHTML = dark ? ICON_SUN : ICON_MOON;
+}
+(function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('genTest.theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon();
+})();
+$('themeBtn').addEventListener('click', function () {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('genTest.theme', next); } catch (e) {}
+    updateThemeIcon();
+});
+
+/* ---------------- mobile nav ---------------- */
+$('menuBtn').addEventListener('click', function () {
+    $('sidebar').classList.add('open'); $('backdrop').classList.add('show');
+});
+$('backdrop').addEventListener('click', function () {
+    $('sidebar').classList.remove('open'); $('backdrop').classList.remove('show');
+});
+
+/* =====================================================================
+   THE LIST
+   Source: 01-Substations\SUBSTAIONS LIST UPDATED ON 12.09.2026.xlsx,
+   sheet SS_GEN, as issued 12 September 2026.
+
+   Transcribed from that workbook and held here because it is a reference
+   list revised occasionally, not live sheet data. Cells that are blank in
+   the workbook are blank here and render as an em-dash - nothing has been
+   inferred or filled in. Sites and boards keep the workbook's row order.
+   ===================================================================== */
+const SITES = [
+{
+"sr": 1,
+"name": "Office Complex Substation 1",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "810 KVA",
+"boards": [
+{
+"name": "MLTB-SS 1.1",
+"rating": "3000A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL NISF",
+"note": ""
+},
+{
+"name": "MLTB-SS 1.2",
+"rating": "2500A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL NISF",
+"note": ""
+},
+{
+"name": "MAINT BOARD SS 1.1",
+"rating": "1250A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL NISF",
+"note": ""
+},
+{
+"name": "GENERATOR PANEL",
+"rating": "1250A, 415V, 3Ph, 4W, 50Hz",
+"make": "SEG",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 2,
+"name": "Office Complex Substation 2",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "1600 AND 810 KVA",
+"boards": [
+{
+"name": "MLTB-SS 2.1",
+"rating": "2500A. 415V, 3PH, 4W 50HZ",
+"make": "AL NISF",
+"note": ""
+},
+{
+"name": "MLTB-SS 2.2",
+"rating": "2500A, 415V, 3Ph, 4W 50Hz",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "MLTB-SS 2.3",
+"rating": "2500A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "GENERATOR PANEL 810 KVA",
+"rating": "",
+"make": "AL NISF",
+"note": "CENTRAL CONTROL PANEL"
+},
+{
+"name": "GENERATOR PANEL 1600 KVA",
+"rating": "2500A, 415V, 3Ph, 4W, 50Hz",
+"make": "SEG",
+"note": ""
+},
+{
+"name": "MLTB-SS 2.4",
+"rating": "1600A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+}
+],
+"genCount": 2
+},
+{
+"sr": 3,
+"name": "Office Complex Substation 3",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "635 KVA",
+"boards": [
+{
+"name": "MLTB-SS 3.1",
+"rating": "2500A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "MLTB-SS 3.2",
+"rating": "2500A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "MAINT BOARD SS 3.1",
+"rating": "1000A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "GENERATOR PANEL SS 3.2",
+"rating": "1000A, 415V, 3Ph, 4W, 50Hz",
+"make": "SEG- POWER SOLUTION",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 4,
+"name": "MEGA COMPLEX",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "900 KVA X 2",
+"boards": [
+{
+"name": "MLTP(10- SWBD)-002",
+"rating": "5000A, 415V, 3Ph, 4W, 50Hz",
+"make": "SIEMENS",
+"note": ""
+},
+{
+"name": "MILP(10- SWBD)-003",
+"rating": "5000A, 415V, 3Ph, 4W, 50Hz",
+"make": "SIEMENS",
+"note": ""
+},
+{
+"name": "MILP(10- SWBD)-004",
+"rating": "5000A, 415V, 3Ph, 4W, 50Hz",
+"make": "SIEMENS",
+"note": ""
+},
+{
+"name": "MITP(10- SWBD)-006",
+"rating": "3000A, 415V, 3Ph, 4W, 50Hz",
+"make": "SIEMENS",
+"note": ""
+},
+{
+"name": "EMCC-1G1",
+"rating": "1500A, 415V, 4W, 3Ph, 50Hz",
+"make": "SIEMENS",
+"note": ""
+},
+{
+"name": "EMCC-1G2",
+"rating": "1500A, 415V, 4W, 3Ph, 50Hz",
+"make": "SIEMENS",
+"note": ""
+},
+{
+"name": "GENERATOR 01",
+"rating": "1500A, 415V, 4W, 3Ph, 50Hz",
+"make": "GCG SIEMENS",
+"note": ""
+},
+{
+"name": "GENERATOR 02",
+"rating": "1500A, 415V, 4W, 3Ph, 50Hz",
+"make": "GCG SIEMENS",
+"note": ""
+}
+],
+"genCount": 2
+},
+{
+"sr": 5,
+"name": "AHMAD AL JABER S/S",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "350 KVA",
+"boards": [
+{
+"name": "SWBRD-SS-1.1",
+"rating": "4000A, 415V, 4W, 3Ph, 50Hz",
+"make": "SAHARA",
+"note": ""
+},
+{
+"name": "BASEMENT BUILDING LV SWITCH BOARD",
+"rating": "1600A, 415V, 3Ph, 4W, 50Hz",
+"make": "SAHARA",
+"note": ""
+},
+{
+"name": "EMCC-1G1",
+"rating": "800A, 415V, 3Ph, 4W, 50Hz",
+"make": "SAHARA",
+"note": ""
+},
+{
+"name": "GENERATOR",
+"rating": "",
+"make": "EATON",
+"note": "CONTROL PANEL"
+}
+],
+"genCount": 1
+},
+{
+"sr": 6,
+"name": "HANGER 140/150",
+"panelTypes": "LT PANELS",
+"voltage": "415V",
+"type": "Electrical Room",
+"genMaintOnly": true,
+"generator": "165 KVA (140) AND 220 KVA (150)",
+"boards": [
+{
+"name": "LT",
+"rating": "",
+"make": "AL-NAIF",
+"note": ""
+},
+{
+"name": "ATS GENERATOR",
+"rating": "",
+"make": "",
+"note": ""
+}
+],
+"genCount": 2
+},
+{
+"sr": 7,
+"name": "KPC NEW",
+"panelTypes": "LT PANELS",
+"voltage": "415V",
+"type": "Electrical Room",
+"genMaintOnly": false,
+"generator": "165 KVA",
+"boards": [
+{
+"name": "MAIN LOW TENSION BOARD",
+"rating": "2500A, 415V, 3Ph, 4W, 50Hz",
+"make": "EBOMAC",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 8,
+"name": "KPC OLD",
+"panelTypes": "LT PANELS",
+"voltage": "415V",
+"type": "Electrical Room",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "LT PANEL P-466",
+"rating": "1600A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 9,
+"name": "YELLOW BUILDING S/S",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "1100 KVA",
+"boards": [
+{
+"name": "LT",
+"rating": "1600A, 415V, 3Ph, 4W, 50Hz",
+"make": "ABB",
+"note": ""
+},
+{
+"name": "GENERATOR(ABB) & ATS(EATON)",
+"rating": "1600A, 415V, 3Ph, 4W, 50Hz",
+"make": "",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 10,
+"name": "CORE STORE 01",
+"panelTypes": "LT PANELS",
+"voltage": "440V",
+"type": "Electrical Room",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "LT SW BOARD",
+"rating": "1200A, 440V, 3Ph, 4W, 50Hz",
+"make": "EBOMAC",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 11,
+"name": "CORE STORE 02",
+"panelTypes": "LT PANELS",
+"voltage": "440V",
+"type": "Electrical Room",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "LT SW BOARD",
+"rating": "1600A, 440V, 3Ph, 4W, 50Hz",
+"make": "EBOMAC",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 12,
+"name": "CORE STORE 03",
+"panelTypes": "LT PANELS",
+"voltage": "440V",
+"type": "Electrical Room",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "MLTP",
+"rating": "2000A, 440V, 3Ph, 4W, 50Hz",
+"make": "EBOMAC",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 13,
+"name": "EX PHQ",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "275 KVA",
+"boards": [
+{
+"name": "LT PANEL (MFG# 09P 1093)",
+"rating": "2000A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "GENERATOR ATS",
+"rating": "400A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 14,
+"name": "KOC MAIN OFFICE",
+"panelTypes": "LT & HT PANELS",
+"voltage": "440V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "1250 KVA",
+"boards": [
+{
+"name": "LT PANEL-124-SG-002-440",
+"rating": "6300A, 440V, 3Ph, 4W, 50Hz",
+"make": "HAZEMEYER",
+"note": ""
+},
+{
+"name": "GENERATOR",
+"rating": "",
+"make": "",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 15,
+"name": "SECURITY CENTER",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "2000 KVA",
+"boards": [
+{
+"name": "SWBD(E999-SGU001)",
+"rating": "3000A, 415V, 4W, 3Ph, 50Hz",
+"make": "AL NISF",
+"note": ""
+},
+{
+"name": "GENERATOR",
+"rating": "3200A, 415V, 4W, 3Ph, 50Hz",
+"make": "EATON",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 16,
+"name": "RADIO STATION",
+"panelTypes": "LT PANELS",
+"voltage": "440V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "1400 KVA",
+"boards": [
+{
+"name": "MLTP S/S",
+"rating": "2000A, 440V, 4W, 3Ph, 50Hz",
+"make": "EBOMAC",
+"note": ""
+},
+{
+"name": "GENERATOR",
+"rating": "2000A, 400V, 4W, 3Ph, 50Hz",
+"make": "EBOMAC",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 17,
+"name": "MOI",
+"panelTypes": "LT PANELS",
+"voltage": "440V",
+"type": "Electrical Room",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "LT PANEL",
+"rating": "2500A, 440V, 3Ph, 4W, 50Hz",
+"make": "SAHARA",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 18,
+"name": "NEW IT",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "1041 KVA",
+"boards": [
+{
+"name": "1824-MLTP-01",
+"rating": "4000A, 415V, 3Ph, 4W, 50Hz",
+"make": "SAHARA",
+"note": ""
+},
+{
+"name": "1824-MLTP-02",
+"rating": "4000A, 415V, 3Ph, 4W, 50Hz",
+"make": "SAHARA",
+"note": ""
+},
+{
+"name": "TRANSFER INTERLOCK CONTROL PANEL",
+"rating": "",
+"make": "GCG",
+"note": ""
+},
+{
+"name": "GENERATOR POWER PANEL",
+"rating": "1250A, 415V, 3Ph, 4W, 50Hz",
+"make": "GCG",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 19,
+"name": "COMPUTER CENTER",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "1000 AND 1360 KVA",
+"boards": [
+{
+"name": "MSB&MAINBOARD",
+"rating": "415V, 3000A, 3Ph, 4W, 50HZ",
+"make": "AL NISF",
+"note": ""
+},
+{
+"name": "ATS CONTROLLER",
+"rating": "",
+"make": "",
+"note": ""
+},
+{
+"name": "ATS 002",
+"rating": "415V, 2000A, 3Ph, 4W, 50Hz",
+"make": "AL FAJR JADID",
+"note": ""
+},
+{
+"name": "GENERATOR POWER PANEL",
+"rating": "",
+"make": "TERBERG",
+"note": ""
+}
+],
+"genCount": 2
+},
+{
+"sr": 20,
+"name": "KGOC",
+"panelTypes": "LT PANELS",
+"voltage": "415V",
+"type": "Electrical Room",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "LT PANEL",
+"rating": "3200A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "ATS PANEL",
+"rating": "1600A, 415V, 3Ph, 4W, 50Hz",
+"make": "AL-NISF",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 21,
+"name": "CSG",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "706 KVA",
+"boards": [
+{
+"name": "MLTP S/S",
+"rating": "4000A, 415V, 4W, 3Ph, 50Hz",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "GENERATOR POWER PANEL",
+"rating": "1000A, 415V, 3Ph, 4W, 50Hz",
+"make": "",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 22,
+"name": "2ND AVENUE NEW OFFICE",
+"panelTypes": "LT & HT PANELS",
+"voltage": "440V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "800 KVA",
+"boards": [
+{
+"name": "MLTB",
+"rating": "4000a, 440V, 3Ph, 50 Hz",
+"make": "AL NIFE",
+"note": ""
+},
+{
+"name": "ATS PANEL",
+"rating": "",
+"make": "AL-NISF",
+"note": ""
+},
+{
+"name": "POWER FACTOR PANEL",
+"rating": "",
+"make": "400KVAR",
+"note": ""
+},
+{
+"name": "GENERATOR CONTROL",
+"rating": "",
+"make": "PANEL",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 23,
+"name": "KOC 160 VILLA'S S/S S1",
+"panelTypes": "LT & HT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "MLTP-S1",
+"rating": "6000A, 415V, 3Ph, 50Hz",
+"make": "GCG",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 24,
+"name": "KOC 160 VILLA'S S/S S2",
+"panelTypes": "LT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "MLTP-S1",
+"rating": "6000A, 415V, 3Ph, 50Hz",
+"make": "GCG",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 25,
+"name": "KOC 160 VILLA'S S/S S3",
+"panelTypes": "LT PANELS",
+"voltage": "415V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "MLTP-S1",
+"rating": "6000A, 415V, 3Ph, 50Hz",
+"make": "GCG",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 26,
+"name": "GUEST HOUSE",
+"panelTypes": "LT PANELS",
+"voltage": "415V",
+"type": "Electrical Room",
+"genMaintOnly": false,
+"generator": "800 KVA",
+"boards": [
+{
+"name": "MLTP-S1",
+"rating": "1600A, 415V, 3Ph, 50Hz",
+"make": "",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 27,
+"name": "AHMEDI PARK SS2",
+"panelTypes": "LT & HT PANELS",
+"voltage": "440V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "MLTP-SS2",
+"rating": "4000A, 415V, 3Ph, 50Hz",
+"make": "",
+"note": ""
+},
+{
+"name": "EMSB",
+"rating": "",
+"make": "",
+"note": ""
+},
+{
+"name": "ATS",
+"rating": "",
+"make": "",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 28,
+"name": "AHMADI PARK SS1",
+"panelTypes": "LT & HT PANELS",
+"voltage": "440V",
+"type": "Substation",
+"genMaintOnly": false,
+"generator": "",
+"boards": [
+{
+"name": "MLTP-SS1",
+"rating": "4000A, 415V, 3Ph, 50Hz",
+"make": "",
+"note": ""
+},
+{
+"name": "ATS",
+"rating": "",
+"make": "",
+"note": ""
+}
+],
+"genCount": 0
+},
+{
+"sr": 29,
+"name": "Fire Team",
+"panelTypes": "",
+"voltage": "",
+"type": "Electrical Room",
+"genMaintOnly": true,
+"generator": "65 KVA",
+"boards": [
+{
+"name": "Electrical Room",
+"rating": "",
+"make": "",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 30,
+"name": "Petrol Filling Station",
+"panelTypes": "",
+"voltage": "",
+"type": "Electrical Room",
+"genMaintOnly": true,
+"generator": "180 KVA",
+"boards": [
+{
+"name": "Electrical Room",
+"rating": "",
+"make": "",
+"note": ""
+}
+],
+"genCount": 1
+},
+{
+"sr": 31,
+"name": "White house",
+"panelTypes": "",
+"voltage": "",
+"type": "",
+"genMaintOnly": true,
+"generator": "365 KVA",
+"boards": [],
+"genCount": 1
+},
+{
+"sr": 32,
+"name": "Mechanical Workshop",
+"panelTypes": "",
+"voltage": "",
+"type": "",
+"genMaintOnly": true,
+"generator": "3 Nos. 82 + 30 + 30 KVA",
+"boards": [],
+"genCount": 3
+}
+];
+
+/* Three of the sets are portable and are kept at the Mechanical Workshop. */
+const PORTABLE_SETS = 3;
+
+/* ---------------- helpers ---------------- */
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+function esc(s) {
+    return String(s === undefined || s === null ? '' : s).replace(/[&<>"]/g, function (c) { return ESCAPES[c]; });
+}
+function or(s) { return s ? esc(s) : '<span class="dash">&mdash;</span>'; }
+
+/* ---------------- KPIs ---------------- */
+(function fillKpis() {
+    const boards = SITES.reduce(function (n, s) { return n + s.boards.length; }, 0);
+    const ss = SITES.filter(function (s) { return s.type === 'Substation'; }).length;
+    const er = SITES.filter(function (s) { return s.type === 'Electrical Room'; }).length;
+    const genSites = SITES.filter(function (s) { return s.generator; }).length;
+    const sets = SITES.reduce(function (n, s) { return n + (s.genCount || 0); }, 0);
+    /* Count only within the 11, or the footnote claims more than the card. */
+    const maint = SITES.filter(function (s) {
+        return s.genMaintOnly && s.type === 'Electrical Room';
+    }).length;
+    const untyped = SITES.filter(function (s) { return !s.type; }).length;
+
+    $('kpiSites').textContent = SITES.length;
+    $('kpiSS').textContent = ss;
+    $('kpiER').textContent = er;
+    $('kpiERFoot').textContent = maint + ' for generator maintenance only' +
+        (untyped ? ' · ' + untyped + ' site' + (untyped === 1 ? '' : 's') + ' not classified' : '');
+    $('kpiBoards').textContent = boards;
+    $('kpiGen').textContent = sets;
+    $('kpiGenFoot').textContent = 'At ' + genSites + ' sites, including ' +
+                                  PORTABLE_SETS + ' portable';
+})();
+
+/* ---------------- render ---------------- */
+function rowsFor(site, boards) {
+    /* The maintenance note is in the source even where the type is not, so it
+       is shown either way. */
+    const typeBadge = (site.type
+            ? '<span class="badge' + (site.type === 'Substation' ? ' ss' : '') + '">' + esc(site.type) + '</span>'
+            : '<span class="dash">&mdash;</span>')
+        + (site.genMaintOnly ? '<span class="sub-line">Generator maintenance only</span>' : '');
+    const genBadge = (site.generator
+            ? '<span class="badge gen">' + esc(site.generator) + '</span>'
+            : '<span class="badge none">None</span>')
+        + (site.query ? '<span class="query-line">' + esc(site.query) + '</span>' : '');
+
+    let locCell = esc(site.name);
+    const bits = [site.panelTypes, site.voltage].filter(Boolean).join(' · ');
+    if (bits) locCell += '<span class="sub-line">' + esc(bits) + '</span>';
+
+    /* A site with no board listed in the workbook still gets a row. */
+    const list = boards.length ? boards : [null];
+
+    return list.map(function (b, i) {
+        const first = (i === 0);
+        let brd = '<span class="dash">&mdash;</span>', rat = brd, mk = brd;
+        if (b) {
+            brd = esc(b.name) + (b.note ? '<span class="sub-line">' + esc(b.note) + '</span>' : '');
+            rat = or(b.rating);
+            mk  = or(b.make);
+        }
+        return '<tr' + (first ? ' class="site-start"' : '') + '>' +
+               '<td class="c-sr">'  + (first ? esc(site.sr) : '') + '</td>' +
+               '<td class="c-loc">' + (first ? locCell : '')      + '</td>' +
+               '<td class="c-brd">' + brd + '</td>' +
+               '<td class="c-rat">' + rat + '</td>' +
+               '<td>' + mk + '</td>' +
+               '<td>' + (first ? typeBadge : '') + '</td>' +
+               '<td>' + (first ? genBadge : '')  + '</td>' +
+               '</tr>';
+    }).join('');
+}
+
+function render() {
+    const q    = $('searchInput').value.trim().toLowerCase();
+    const type = $('typeFilter').value;
+    const gen  = $('genFilter').value;
+
+    let html = '', shownSites = 0, shownBoards = 0;
+
+    for (let i = 0; i < SITES.length; i++) {
+        const s = SITES[i];
+
+        if (type && s.type !== type) continue;
+        if (gen === 'yes' && !s.generator) continue;
+        if (gen === 'no'  &&  s.generator) continue;
+
+        const siteText = [s.sr, s.name, s.panelTypes, s.voltage, s.type, s.generator]
+                            .join(' ').toLowerCase();
+        const siteHit = !q || siteText.indexOf(q) > -1;
+
+        /* When the site itself matches, keep all of its boards; otherwise keep
+           only the boards that match, so a search for a board name still shows
+           which site it belongs to. */
+        const boards = siteHit ? s.boards : s.boards.filter(function (b) {
+            return [b.name, b.rating, b.make, b.note].join(' ').toLowerCase().indexOf(q) > -1;
+        });
+
+        if (!siteHit && !boards.length) continue;
+
+        html += rowsFor(s, boards);
+        shownSites++;
+        shownBoards += boards.length;
+    }
+
+    $('tbody').innerHTML = html;
+    $('emptyState').hidden = shownSites > 0;
+    $('resultCount').textContent = shownSites
+        ? shownSites + (shownSites === 1 ? ' site' : ' sites') + ' · ' +
+          shownBoards + (shownBoards === 1 ? ' board' : ' boards')
+        : '';
+}
+
+let debounce = null;
+$('searchInput').addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(render, 120);
+});
+$('typeFilter').addEventListener('change', render);
+$('genFilter').addEventListener('change', render);
+$('clearBtn').addEventListener('click', function () {
+    $('searchInput').value = '';
+    $('typeFilter').value = '';
+    $('genFilter').value = '';
+    render();
+});
+
+render();
+</script>
+</body>
+</html>

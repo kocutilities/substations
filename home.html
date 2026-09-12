@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home · Substations &amp; Generators</title>
+<link rel="icon" href="assets/koc-logo.png" type="image/png">
+<link rel="preconnect" href="https://sheets.googleapis.com" crossorigin>
+
+<style>
+/* ============================================================
+   Home - the way in to everything else.
+
+   Six things to look at and nine places to go. The counts are read
+   from the same three sheets the pages themselves use, so the page
+   cannot claim a figure the data does not support; anything it cannot
+   reach shows an em-dash rather than a guess.
+   ============================================================ */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;   --good-soft: rgba(52,211,153,.14);
+    --warn:          #fbbf24;   --warn-soft: rgba(251,191,36,.14);
+    --bad:           #f87171;   --bad-soft:  rgba(248,113,113,.14);
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        18px;
+    --sidebar-w:     252px;
+}
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #eef1f8;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f5f7fc;
+    --surface-3:     #eaeefa;
+    --border:        rgba(15,23,42,.10);
+    --border-strong: rgba(15,23,42,.18);
+    --text:          #0f172a;
+    --text-dim:      #55627d;
+    --text-faint:    #7c88a3;
+    --accent:        #2f5fe0;
+    --accent-2:      #7c3aed;
+    --accent-soft:   rgba(47,95,224,.10);
+    --good:          #059669;   --good-soft: rgba(5,150,105,.11);
+    --warn:          #b45309;   --warn-soft: rgba(180,83,9,.11);
+    --bad:           #dc2626;   --bad-soft:  rgba(220,38,38,.10);
+    --shadow:        0 16px 34px -20px rgba(15,23,42,.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(76,125,255,.20), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(139,92,246,.15), transparent 60%);
+}
+html[data-theme="light"] body::before {
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(47,95,224,.11), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(124,58,237,.09), transparent 60%);
+}
+
+/* ============================================================ Shell */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+.sidebar {
+    width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    padding: 20px 14px;
+    display: flex; flex-direction: column; gap: 22px;
+    position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+.brand-badge {
+    width: 42px; height: 42px; flex: 0 0 42px;
+    border-radius: 12px;
+    background: linear-gradient(150deg, #1c2f5d, #3f1e5a);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 16px -6px rgba(76,125,255,.7);
+}
+.brand-badge img { width: 27px; height: auto; display: block; }
+.brand-name { font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+.brand-sub  { font-size: 11px; color: var(--text-faint); }
+
+.nav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 0 10px; margin-bottom: 7px;
+}
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 10px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border: 1px solid transparent;
+    transition: background .16s, color .16s;
+}
+.nav a:hover { background: var(--surface-2); color: var(--text); }
+.nav a.active {
+    background: var(--accent-soft); color: var(--text);
+    border-color: rgba(76,125,255,.30); font-weight: 600;
+}
+.nav a .ico { display: grid; place-items: center; flex: 0 0 18px; opacity: .9; }
+.nav a.active .ico { opacity: 1; color: var(--accent); }
+
+svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+svg.i.lg { width: 22px; height: 22px; stroke-width: 1.6; }
+
+.side-foot { margin-top: auto; }
+.side-card {
+    border-radius: 14px; padding: 14px;
+    background: linear-gradient(150deg, rgba(76,125,255,.20), rgba(139,92,246,.16));
+    border: 1px solid var(--border-strong);
+}
+.side-card h4 { margin: 0 0 3px; font-size: 12.5px; }
+.side-card p  { margin: 0; font-size: 11px; color: var(--text-dim); }
+
+/* ============================================================ Main */
+.main { flex: 1; min-width: 0; padding: 22px 26px 40px; }
+
+.topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.page-title { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.3px; }
+.page-sub   { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+
+.chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 13px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 12.5px; color: var(--text-dim); white-space: nowrap;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 9px var(--good); }
+.dot.off { background: var(--bad); box-shadow: 0 0 9px var(--bad); }
+
+button, .btn {
+    font-family: inherit; font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: background .16s, border-color .16s, transform .12s;
+}
+button:hover, .btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:active { transform: translateY(1px); }
+.icon-btn { padding: 9px 11px; }
+
+/* ============================================================ KPIs */
+/* Six of them, so an explicit 6 / 3 / 2 rather than auto-fit - auto-fit
+   settles on five at some widths and leaves one card stranded on its own row. */
+.kpis {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 13px; margin-bottom: 26px;
+}
+@media (max-width: 1400px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 720px)  { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 17px;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.kpi::after {
+    content: ''; position: absolute; right: -34px; top: -34px;
+    width: 108px; height: 108px; border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft), transparent 70%);
+}
+.kpi-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--text-faint); font-weight: 600; margin-bottom: 9px;
+}
+.kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -.5px; line-height: 1.15; }
+.kpi-value.sm { font-size: 19px; }
+.kpi-foot { font-size: 11.5px; color: var(--text-dim); margin-top: 5px; }
+
+/* ============================================================ Sections */
+.sec-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: 0 0 13px; flex-wrap: wrap;
+}
+.sec-head h2 {
+    margin: 0; font-size: 12px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint);
+}
+.sec-head p { margin: 0; font-size: 12.5px; color: var(--text-dim); }
+
+.tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: 13px; margin-bottom: 26px;
+}
+
+/* A whole tile is the link, so the entire card is a target rather than
+   a small piece of text inside one. */
+a.tile {
+    display: flex; flex-direction: column; gap: 9px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 17px 18px 16px;
+    box-shadow: var(--shadow);
+    text-decoration: none; color: inherit;
+    position: relative; overflow: hidden;
+    transition: transform .16s, border-color .16s, background .16s;
+}
+a.tile:hover {
+    transform: translateY(-2px);
+    border-color: rgba(76,125,255,.42);
+    background: var(--surface-2);
+}
+a.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a.tile::after {
+    content: ''; position: absolute; right: -40px; top: -40px;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft), transparent 70%);
+    opacity: .8;
+}
+.tile-top { display: flex; align-items: center; gap: 11px; }
+.tile-ico {
+    width: 40px; height: 40px; flex: 0 0 40px; border-radius: 11px;
+    display: grid; place-items: center;
+    background: linear-gradient(150deg, rgba(76,125,255,.24), rgba(139,92,246,.20));
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+}
+.tile-name { font-size: 14.5px; font-weight: 650; letter-spacing: -.01em; }
+.tile-stat {
+    font-size: 11.5px; color: var(--accent); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.tile-desc { margin: 0; font-size: 12.5px; color: var(--text-dim); }
+.tile-go {
+    display: flex; align-items: center; gap: 6px; margin-top: auto;
+    font-size: 11.5px; font-weight: 600; color: var(--text-faint);
+}
+a.tile:hover .tile-go { color: var(--accent); }
+
+a.tile.enter .tile-ico {
+    background: linear-gradient(150deg, rgba(52,211,153,.22), rgba(76,125,255,.16));
+}
+a.tile.enter .tile-stat { color: var(--good); }
+a.tile.enter:hover { border-color: rgba(52,211,153,.42); }
+a.tile.enter:hover .tile-go { color: var(--good); }
+
+/* ============================================================ Activity */
+.panes { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 13px; }
+.panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    min-width: 0;
+}
+.panel-head {
+    padding: 13px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-faint);
+}
+.panel-head .more {
+    margin-left: auto; text-transform: none; letter-spacing: 0;
+    font-size: 11.5px; font-weight: 600; color: var(--accent); text-decoration: none;
+}
+.panel-head .more:hover { text-decoration: underline; }
+
+.feed { padding: 6px 0; }
+.feed-row {
+    display: flex; gap: 12px; padding: 10px 16px; align-items: baseline;
+}
+.feed-row + .feed-row { border-top: 1px solid var(--border); }
+.feed-when {
+    flex: 0 0 84px; font-size: 11.5px; color: var(--text-faint);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.feed-body { min-width: 0; flex: 1; }
+.feed-what {
+    font-size: 13px; color: var(--text); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.feed-where { font-size: 11.5px; color: var(--text-dim); margin-top: 1px; }
+.feed-tail { flex: 0 0 auto; }
+
+.badge {
+    display: inline-block; padding: 3px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    background: var(--surface-3); color: var(--text-dim); border: 1px solid var(--border);
+}
+.badge.good { background: var(--good-soft); color: var(--good); border-color: transparent; }
+.badge.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.badge.bad  { background: var(--bad-soft);  color: var(--bad);  border-color: transparent; }
+
+.skel { padding: 12px 16px; display: grid; gap: 10px; }
+.skel div {
+    height: 12px; border-radius: 6px;
+    background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
+    background-size: 200% 100%; animation: shimmer 1.25s linear infinite;
+}
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.foot-note {
+    margin: 24px 0 0; font-size: 11.5px; color: var(--text-faint);
+    line-height: 1.6;
+}
+
+.menu-btn { display: none; }
+.backdrop { display: none; }
+
+@media (max-width: 1000px) {
+    .sidebar {
+        position: fixed; z-index: 50; left: 0; top: 0;
+        transform: translateX(-100%); transition: transform .22s ease;
+        box-shadow: 0 0 50px rgba(0,0,0,.5);
+    }
+    .sidebar.open { transform: none; }
+    .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
+    .menu-btn { display: inline-flex; }
+    .main { padding: 16px 15px 32px; }
+}
+@media (max-width: 560px) {
+    .page-title { font-size: 20px; }
+    .kpi-value { font-size: 22px; }
+    .hide-sm { display: none; }
+    .feed-when { flex-basis: 70px; }
+}
+</style>
+</head>
+<body>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="app">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-badge"><img src="assets/koc-logo.png" alt="KOC"></div>
+            <div>
+                <div class="brand-name">Substations &amp; Generators</div>
+                <div class="brand-sub">Utilities Team E&amp;I I</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">Overview</div>
+            <nav class="nav">
+                <a class="active" href="#"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span> Home</a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">View</div>
+            <nav class="nav">
+                <a href="View_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 11h6M9 15h4"/></svg></span> Daily Job Reports</a>
+                <a href="View_Generator_Test_Data.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></span> Generator Test Data</a>
+                <a href="kWh_display.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg></span> kWh Data</a>
+                <a href="Generator_details.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span> Generator Details</a>
+                <a href="Substations_Ele_Rooms.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M8 9V5h8v4M8 14h8M8 17.5h5"/></svg></span> Substations &amp; Ele. Rooms</a>
+                <a href="dashboard.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Dashboard</a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Enter Data</div>
+            <nav class="nav">
+                <a href="Enter_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Daily Job Report</a>
+                <a href="Enter_Generator_Test.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Generator Test Run</a>
+                <a href="kWh_Reading.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> kWh Readings</a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                <h4>Corporate Services Group</h4>
+                <p>Electrical &amp; Instrumentation Section</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+            <div style="display:flex; align-items:flex-start; gap:11px;">
+                <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+                <div>
+                    <h1 class="page-title" id="greeting">Substations &amp; Generators</h1>
+                    <p class="page-sub" id="todayLine">&nbsp;</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <span class="chip hide-sm"><span class="dot" id="liveDot"></span><span id="syncText">Loading&hellip;</span></span>
+                <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark"></button>
+            </div>
+        </div>
+
+        <!-- ---------- the numbers ---------- -->
+        <section class="kpis">
+            <div class="kpi">
+                <div class="kpi-label">Job Reports</div>
+                <div class="kpi-value" id="kJobs">&mdash;</div>
+                <div class="kpi-foot" id="kJobsFoot">&nbsp;</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Generator Tests</div>
+                <div class="kpi-value" id="kTests">&mdash;</div>
+                <div class="kpi-foot" id="kTestsFoot">&nbsp;</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">kWh Readings</div>
+                <div class="kpi-value" id="kKwh">&mdash;</div>
+                <div class="kpi-foot" id="kKwhFoot">&nbsp;</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Sites</div>
+                <div class="kpi-value">32</div>
+                <div class="kpi-foot">19 substations · 11 electrical rooms</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Standby Generators</div>
+                <div class="kpi-value">27</div>
+                <div class="kpi-foot">At 21 sites, including 3 portable</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Panel Boards</div>
+                <div class="kpi-value">71</div>
+                <div class="kpi-foot">Listed across all sites</div>
+            </div>
+        </section>
+
+        <!-- ---------- where to go ---------- -->
+        <div class="sec-head">
+            <h2>View &amp; analyse</h2>
+            <p>Everything the team has recorded, searchable and charted.</p>
+        </div>
+        <section class="tiles">
+
+            <a class="tile" href="View_Job_Reports.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 11h6M9 15h4"/></svg></span>
+                    <div>
+                        <div class="tile-name">Daily Job Reports</div>
+                        <div class="tile-stat" id="tJobs">&mdash;</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Every job the team has logged, with search across all columns and a monthly report to download.</p>
+                <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+            <a class="tile" href="View_Generator_Test_Data.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></span>
+                    <div>
+                        <div class="tile-name">Generator Test Data</div>
+                        <div class="tile-stat" id="tTests">&mdash;</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Monthly test-run readings for every set — volts, amps, oil pressure, water temperature and remarks.</p>
+                <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+            <a class="tile" href="kWh_display.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg></span>
+                    <div>
+                        <div class="tile-name">Energy Consumption Data</div>
+                        <div class="tile-stat" id="tKwh">&mdash;</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Monthly kWh by incomer, with the initial and final meter readings behind every figure.</p>
+                <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+            <a class="tile" href="dashboard.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+                    <div>
+                        <div class="tile-name">Energy Dashboard</div>
+                        <div class="tile-stat">15 locations</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Monthly consumption charts beside the single line diagram and live switchboard status.</p>
+                <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+            <a class="tile" href="Generator_details.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span>
+                    <div>
+                        <div class="tile-name">Generator Details</div>
+                        <div class="tile-stat">27 generators</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Nameplate data for each set, with live dials showing the RPM, temperature and oil pressure of any recorded run.</p>
+                <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+            <a class="tile" href="Substations_Ele_Rooms.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M8 9V5h8v4M8 14h8M8 17.5h5"/></svg></span>
+                    <div>
+                        <div class="tile-name">Substations &amp; Ele. Rooms</div>
+                        <div class="tile-stat">71 panel boards</div>
+                    </div>
+                </div>
+                <p class="tile-desc">The estate at a glance — every panel board with its rating, make and the standby set behind it.</p>
+                <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+        </section>
+
+        <div class="sec-head">
+            <h2>Record</h2>
+            <p>The three forms that feed everything above.</p>
+        </div>
+        <section class="tiles">
+
+            <a class="tile enter" href="Enter_Job_Reports.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 12h6M12 9v6"/></svg></span>
+                    <div>
+                        <div class="tile-name">Daily Job Report</div>
+                        <div class="tile-stat" id="tJobsToday">&mdash;</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Log a job — location, description, technicians and what was carried out.</p>
+                <div class="tile-go">Enter <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+            <a class="tile enter" href="Enter_Generator_Test.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.5l3 2"/></svg></span>
+                    <div>
+                        <div class="tile-name">Generator Test Run</div>
+                        <div class="tile-stat" id="tTestsMonth">&mdash;</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Record a monthly test run — all readings, the mode of test and the crew present.</p>
+                <div class="tile-go">Enter <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+            <a class="tile enter" href="kWh_Reading.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span>
+                    <div>
+                        <div class="tile-name">kWh Readings</div>
+                        <div class="tile-stat" id="tKwhMonth">&mdash;</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Enter the month's meter readings for an incomer; the units are worked out for you.</p>
+                <div class="tile-go">Enter <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+        </section>
+
+        <!-- ---------- what has been happening ---------- -->
+        <div class="sec-head">
+            <h2>Latest activity</h2>
+            <p>The most recent entries in the two logs.</p>
+        </div>
+        <section class="panes">
+
+            <div class="panel">
+                <div class="panel-head">
+                    Recent job reports
+                    <a class="more" href="View_Job_Reports.html">See all</a>
+                </div>
+                <div class="feed" id="jobFeed">
+                    <div class="skel"><div style="width:82%"></div><div style="width:64%"></div><div style="width:74%"></div><div style="width:58%"></div></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head">
+                    Recent generator tests
+                    <a class="more" href="View_Generator_Test_Data.html">See all</a>
+                </div>
+                <div class="feed" id="testFeed">
+                    <div class="skel"><div style="width:76%"></div><div style="width:66%"></div><div style="width:80%"></div><div style="width:54%"></div></div>
+                </div>
+            </div>
+
+        </section>
+
+        <p class="foot-note" id="sourceNote">&nbsp;</p>
+
+    </main>
+</div>
+
+<script>
+const $ = function (id) { return document.getElementById(id); };
+
+/* ---------------- theme ---------------- */
+const ICON_MOON = '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const ICON_SUN  = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/>' +
+                  '<path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+
+function updateThemeIcon() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('themeBtn').innerHTML = dark ? ICON_SUN : ICON_MOON;
+}
+(function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('genTest.theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon();
+})();
+$('themeBtn').addEventListener('click', function () {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('genTest.theme', next); } catch (e) {}
+    updateThemeIcon();
+});
+
+/* ---------------- mobile nav ---------------- */
+$('menuBtn').addEventListener('click', function () {
+    $('sidebar').classList.add('open'); $('backdrop').classList.add('show');
+});
+$('backdrop').addEventListener('click', function () {
+    $('sidebar').classList.remove('open'); $('backdrop').classList.remove('show');
+});
+
+/* =====================================================================
+   The three sheets the pages themselves read. Each page keeps its own
+   API key, and the keys are reused here rather than introducing a new
+   one, so revoking a key breaks one thing rather than two.
+   ===================================================================== */
+const SOURCES = {
+    jobs: {
+        url: 'https://sheets.googleapis.com/v4/spreadsheets/10bVHFOAs2ZuArO8c-WhIlDs_5vlF1w1OAnCEd39A9oA' +
+             '/values/Sheet1!A5:G?key=AIzaSyDV9tjKSvDa2WLQzVMFzZbytxRpm3ayl7s' +
+             '&prettyPrint=false&majorDimension=ROWS'
+    },
+    tests: {
+        url: 'https://sheets.googleapis.com/v4/spreadsheets/1JyxD0o4XMrlABqz7DYxuH85jnlLLqWGLXg8Mcs3Oluo' +
+             '/values/Sheet1!A1:X?key=AIzaSyDk7s5HgALXCS4Jrjqt_-J09YbTOFV0pUg' +
+             '&prettyPrint=false&majorDimension=ROWS'
+    },
+    kwh: {
+        url: 'https://sheets.googleapis.com/v4/spreadsheets/1st9oYw9k0MOvo4stufDBFfn51wyn810iMWySKerzdyE' +
+             '/values/Sheet1!A1:H?key=AIzaSyDk7s5HgALXCS4Jrjqt_-J09YbTOFV0pUg' +
+             '&prettyPrint=false&majorDimension=ROWS'
+    }
+};
+
+const CACHE_KEY = 'home.summary.v1';
+
+function ask(url) {
+    return fetch(url)
+        .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(function (d) {
+            /* Sheets answers an outage with an error body, not a bad status. */
+            if (!d || d.error || !d.values) throw new Error('no data');
+            return d.values;
+        })
+        .catch(function () { return null; });
+}
+
+/* start before anything else runs */
+const jobsP  = ask(SOURCES.jobs.url);
+const testsP = ask(SOURCES.tests.url);
+const kwhP   = ask(SOURCES.kwh.url);
+
+/* ---------------- helpers ---------------- */
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+        .replace(/[&<>"]/g, function (c) { return ESCAPES[c]; });
+}
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function n(x) { return Number(x || 0).toLocaleString('en-US'); }
+
+function isoParts(s) {
+    const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? { y: +m[1], m: +m[2], d: +m[3] } : null;
+}
+function fmtDate(s) {
+    const p = isoParts(s);
+    return p ? (String(p.d).padStart(2, '0') + ' ' + MON[p.m - 1] + ' ' + p.y) : (s || '');
+}
+function fmtMonth(ym) {
+    const m = String(ym || '').match(/^(\d{4})-(\d{2})$/);
+    return m ? (MON[+m[2] - 1] + ' ' + m[1]) : (ym || '');
+}
+
+const now = new Date();
+const THIS_MONTH = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+/* ---------------- greeting ---------------- */
+(function greet() {
+    const h = now.getHours();
+    const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    $('greeting').textContent = part;
+    $('todayLine').textContent =
+        now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) +
+        ' · Substations & Generators, Utilities E&I I';
+})();
+
+/* ---------------- build the summary ---------------- */
+function summarise(jobs, tests, kwh) {
+    const s = { at: Date.now() };
+
+    if (jobs) {
+        /* the range starts at the header row, so drop it */
+        const rows = jobs.filter(function (r) { return r && r[0] && r[0] !== 'Location'; });
+        s.jobs = { total: rows.length, month: 0, recent: [] };
+        rows.forEach(function (r) {
+            if (String(r[2] || '').indexOf(THIS_MONTH) === 0) s.jobs.month++;
+        });
+        const sorted = rows.slice().sort(function (a, b) {
+            return String(a[2]) < String(b[2]) ? 1 : String(a[2]) > String(b[2]) ? -1 : 0;
+        });
+        s.jobs.recent = sorted.slice(0, 5).map(function (r) {
+            return { date: r[2] || '', where: r[0] || '', what: r[1] || '', status: r[6] || '' };
+        });
+        s.jobs.first = rows.reduce(function (min, r) {
+            const d = String(r[2] || '');
+            return (d && (!min || d < min)) ? d : min;
+        }, '');
+    }
+
+    if (tests) {
+        const rows = tests.slice(1).filter(function (r) { return r && r[0]; });
+        s.tests = { total: rows.length, month: 0, recent: [] };
+        rows.forEach(function (r) {
+            if (String(r[1] || '').indexOf(THIS_MONTH) === 0) s.tests.month++;
+        });
+        const sorted = rows.slice().sort(function (a, b) {
+            const ka = String(a[1]) + String(a[2] || ''), kb = String(b[1]) + String(b[2] || '');
+            return ka < kb ? 1 : ka > kb ? -1 : 0;
+        });
+        s.tests.latest = sorted.length ? sorted[0][1] : '';
+        s.tests.recent = sorted.slice(0, 5).map(function (r) {
+            return { date: r[1] || '', where: r[0] || '', status: r[19] || '', mode: r[18] || '' };
+        });
+        const seen = {};
+        rows.forEach(function (r) { seen[String(r[0]).trim().toUpperCase()] = 1; });
+        s.tests.sets = Object.keys(seen).length;
+    }
+
+    if (kwh) {
+        const rows = kwh.slice(1).filter(function (r) { return r && r[1]; });
+        const seen = {};
+        let latest = '';
+        rows.forEach(function (r) {
+            seen[String(r[1]).trim().toUpperCase()] = 1;
+            const ym = String(r[2] || '');
+            if (/^\d{4}-\d{2}$/.test(ym) && ym > latest) latest = ym;
+        });
+        s.kwh = { total: rows.length, incomers: Object.keys(seen).length, latest: latest };
+    }
+
+    return s;
+}
+
+/* ---------------- paint ---------------- */
+function paint(s) {
+    if (s.jobs) {
+        $('kJobs').textContent = n(s.jobs.total);
+        $('kJobsFoot').textContent = s.jobs.first
+            ? ('Since ' + fmtDate(s.jobs.first))
+            : 'All records on file';
+        $('tJobs').textContent = n(s.jobs.total) + ' reports';
+        $('tJobsToday').textContent = s.jobs.month + ' this month';
+        $('jobFeed').innerHTML = s.jobs.recent.length
+            ? s.jobs.recent.map(function (r) {
+                const done = /complete/i.test(r.status);
+                return '<div class="feed-row">' +
+                       '<div class="feed-when">' + esc(fmtDate(r.date)) + '</div>' +
+                       '<div class="feed-body">' +
+                         '<div class="feed-what" title="' + esc(r.what) + '">' + esc(r.what) + '</div>' +
+                         '<div class="feed-where">' + esc(r.where) + '</div>' +
+                       '</div>' +
+                       (r.status ? '<div class="feed-tail"><span class="badge' + (done ? ' good' : '') + '">' +
+                                   esc(r.status.trim()) + '</span></div>' : '') +
+                       '</div>';
+              }).join('')
+            : '<div class="skel"><div style="width:60%"></div></div>';
+    } else {
+        $('jobFeed').innerHTML = '<div class="feed-row"><div class="feed-body">' +
+            '<div class="feed-where">Job report sheet could not be reached.</div></div></div>';
+    }
+
+    if (s.tests) {
+        $('kTests').textContent = n(s.tests.total);
+        $('kTestsFoot').textContent = s.tests.latest
+            ? ('Latest ' + fmtDate(s.tests.latest))
+            : 'All records on file';
+        $('tTests').textContent = n(s.tests.total) + ' tests';
+        $('tTestsMonth').textContent = s.tests.month + ' this month';
+        $('testFeed').innerHTML = s.tests.recent.length
+            ? s.tests.recent.map(function (r) {
+                const good = /good/i.test(r.status);
+                const bad  = /not function|fault/i.test(r.status);
+                return '<div class="feed-row">' +
+                       '<div class="feed-when">' + esc(fmtDate(r.date)) + '</div>' +
+                       '<div class="feed-body">' +
+                         '<div class="feed-what" title="' + esc(r.where) + '">' + esc(r.where) + '</div>' +
+                         '<div class="feed-where">' + esc(r.mode || '—') + '</div>' +
+                       '</div>' +
+                       (r.status ? '<div class="feed-tail"><span class="badge' +
+                                   (bad ? ' bad' : good ? ' good' : '') + '">' +
+                                   esc(r.status.trim()) + '</span></div>' : '') +
+                       '</div>';
+              }).join('')
+            : '<div class="skel"><div style="width:60%"></div></div>';
+    } else {
+        $('testFeed').innerHTML = '<div class="feed-row"><div class="feed-body">' +
+            '<div class="feed-where">Generator test sheet could not be reached.</div></div></div>';
+    }
+
+    if (s.kwh) {
+        $('kKwh').textContent = n(s.kwh.total);
+        $('kKwhFoot').textContent = s.kwh.incomers + ' incomers · to ' + fmtMonth(s.kwh.latest);
+        $('tKwh').textContent = n(s.kwh.total) + ' readings';
+        $('tKwhMonth').textContent = 'To ' + fmtMonth(s.kwh.latest);
+    }
+
+    const ok = !!(s.jobs && s.tests && s.kwh);
+    $('syncText').textContent = ok
+        ? 'Synced ' + new Date(s.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'Some sheets unavailable';
+    if (!ok) $('liveDot').classList.add('off');
+
+    $('sourceNote').innerHTML =
+        'Counts read live from the job report, generator test and kWh sheets. ' +
+        'Site, board and generator figures come from the substations list of 12 Sep 2026.';
+}
+
+/* Show the previous visit's figures at once, then replace them with fresh
+   ones. Nothing here is worth making someone wait for a network round trip. */
+(function fromCache() {
+    try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        if (s && (s.jobs || s.tests || s.kwh)) paint(s);
+    } catch (e) { /* ignore */ }
+})();
+
+Promise.all([jobsP, testsP, kwhP]).then(function (r) {
+    const s = summarise(r[0], r[1], r[2]);
+    paint(s);
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(s)); } catch (e) { /* ignore */ }
+});
+</script>
+</body>
+</html>
