@@ -369,6 +369,7 @@ const networkPromise = fetch(SHEET_URL).then(function (r) {
             <div class="topbar-actions">
                 <span class="chip hide-sm"><span class="dot" id="liveDot"></span><span id="syncText">Loading…</span></span>
                 <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark" type="button"></button>
+                <button class="icon-btn" id="signOutBtn" type="button" aria-label="Sign out" title="Sign out"><svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg><span class="hide-sm">Sign out</span></button>
                 <a class="btn" href="kWh_Reading.html"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg> <span class="hide-sm">Add Reading</span></a>
                 <a class="btn btn-primary" href="home.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> <span class="hide-sm">Home</span></a>
             </div>
@@ -702,5 +703,17 @@ async function init() {
 init();
 </script>
 
+<script>
+/* Sign out - end the session the sign-in page wrote, then go back to it.
+   replace() rather than a link, so Back does not return to this page. */
+(function () {
+    var b = document.getElementById('signOutBtn');
+    if (!b) return;
+    b.addEventListener('click', function () {
+        try { localStorage.removeItem('koc-sg-session'); } catch (e) { /* private mode */ }
+        location.replace('index.html');
+    });
+})();
+</script>
 </body>
 </html>

@@ -407,6 +407,7 @@ const networkPromise = fetch(SHEET_URL).then(function (r) {
             <div class="topbar-actions">
                 <span class="chip hide-sm"><span class="dot" id="liveDot"></span><span id="syncText">Loading…</span></span>
                 <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark"></button>
+                <button class="icon-btn" id="signOutBtn" type="button" aria-label="Sign out" title="Sign out"><svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg><span class="hide-sm">Sign out</span></button>
                 <div class="menu-wrap">
                     <button id="reportBtn" title="Download a month's generator test report">
                         <svg class="i" viewBox="0 0 24 24"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></svg>
@@ -1095,5 +1096,17 @@ async function init() {
 init();
 </script>
 
+<script>
+/* Sign out - end the session the sign-in page wrote, then go back to it.
+   replace() rather than a link, so Back does not return to this page. */
+(function () {
+    var b = document.getElementById('signOutBtn');
+    if (!b) return;
+    b.addEventListener('click', function () {
+        try { localStorage.removeItem('koc-sg-session'); } catch (e) { /* private mode */ }
+        location.replace('index.html');
+    });
+})();
+</script>
 </body>
 </html>
