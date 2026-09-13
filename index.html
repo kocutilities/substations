@@ -366,6 +366,20 @@ input::placeholder { color: var(--text-faint); }
         return diff === 0;
     }
 
+    /* Where to go after signing in: the page the visitor was sent here from,
+       if it is one of ours, otherwise home. Only a bare page name is accepted,
+       so nothing stored can send the browser off to another site. */
+    function afterLogin() {
+        var to = 'home.html';
+        try {
+            var want = sessionStorage.getItem('koc-sg-after-login') || '';
+            sessionStorage.removeItem('koc-sg-after-login');
+            var page = want.split(/[?#]/)[0];
+            if (/^[A-Za-z0-9_ .-]+\.html$/.test(page) && page !== 'index.html') to = want;
+        } catch (e) { /* ignore */ }
+        return to;
+    }
+
     function signIn(username, password) {
         var u = String(username || '').trim().toLowerCase();
         var rec = USERS[u];
@@ -631,7 +645,7 @@ input::placeholder { color: var(--text-faint); }
                 return;
             }
             say('ok', 'Signed in. Opening the system\u2026');
-            setTimeout(function () { location.replace('home.html'); }, 380);
+            setTimeout(function () { location.replace(afterLogin()); }, 380);
         }).catch(function (err) {
             btn.removeAttribute('aria-busy');
             btn.lastElementChild.textContent = 'Sign in';

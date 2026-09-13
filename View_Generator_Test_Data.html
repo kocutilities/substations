@@ -3,6 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* koc-sg-guard - sign-in check. Runs before anything else on the page.
+   Still a front door, not a lock: the pages are static files, so this runs
+   on the visitor's own machine and can be bypassed by anyone determined.
+   It stops casual access and an unattended screen, nothing more. */
+(function () {
+    var ok = false;
+    try {
+        var s = JSON.parse(localStorage.getItem('koc-sg-session') || 'null');
+        ok = !!(s && s.user && s.until && Date.now() < s.until);
+        if (!ok) localStorage.removeItem('koc-sg-session');   /* expired */
+    } catch (e) { ok = false; }
+    if (ok) return;
+    /* remember where they were going, so signing in takes them there */
+    try {
+        sessionStorage.setItem('koc-sg-after-login',
+            decodeURIComponent(location.pathname.split('/').pop()) + location.search + location.hash);
+    } catch (e) { /* ignore */ }
+    document.documentElement.style.visibility = 'hidden';     /* no flash of the page */
+    /* stop parsing here, so no later script on the page fetches data */
+    if (window.stop) window.stop();
+    location.replace('index.html');
+})();
+</script>
 <title>Generator Test Run Data · Substations &amp; Generators</title>
 <link rel="preconnect" href="https://sheets.googleapis.com" crossorigin>
 
