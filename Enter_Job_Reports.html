@@ -292,6 +292,9 @@ textarea#remarks { min-height: 62px; }
         box-shadow: 0 0 50px rgba(0,0,0,.5);
     }
     .sidebar.open { transform: none; }
+    /* .app is its own stacking layer (z-index 1), which would trap the
+       sidebar under the backdrop - release it so taps reach the menu */
+    .app { z-index: auto; }
     .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
     .menu-btn { display: inline-flex; }
     .main { padding: 16px 15px 34px; }
