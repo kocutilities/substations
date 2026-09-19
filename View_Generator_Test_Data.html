@@ -43,6 +43,8 @@
     --surface:       #101829;
     --surface-2:     #162034;
     --surface-3:     #1c2842;
+    --row-alt:       #141e33;
+    --row-sel:       #1d2f5c;
     --border:        rgba(255,255,255,.08);
     --border-strong: rgba(255,255,255,.14);
     --text:          #e9eefb;
@@ -68,6 +70,8 @@ html[data-theme="light"] {
     --surface:       #ffffff;
     --surface-2:     #f5f7fc;
     --surface-3:     #eaeefa;
+    --row-alt:       #f1f4fb;
+    --row-sel:       #dbe5fd;
     --border:        rgba(15,23,42,.10);
     --border-strong: rgba(15,23,42,.18);
     --text:          #0f172a;
@@ -305,8 +309,16 @@ tbody td:first-child {
     color: var(--text); font-weight: 600;
     box-shadow: 1px 0 0 var(--border);
 }
+/* Two shades for alternate rows, and a tapped row stays highlighted,
+   so a row can be followed while the table scrolls sideways. */
+tbody tr:nth-child(even) td { background: var(--row-alt); }
+tbody tr { cursor: pointer; }
 tbody tr:hover td { background: var(--surface-2); }
-tbody tr:hover td:first-child { background: var(--surface-2); }
+tbody tr.sel td, tbody tr.sel:hover td {
+    background: var(--row-sel); color: var(--text);
+    box-shadow: inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent);
+}
+tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
 tbody tr:last-child td { border-bottom: none; }
 
 /* Remarks can be long - let it wrap instead of stretching the table */
@@ -350,6 +362,13 @@ tbody td.wrap { white-space: normal; min-width: 240px; max-width: 380px; }
     .table-wrap { max-height: none; }
     input[type="text"] { width: 100%; }
     .field, select { flex: 1 1 190px; }
+}
+/* Phones: a frozen Location column takes half the screen, so let it
+   scroll with the rest; the row shades keep each row traceable. */
+@media (max-width: 760px) {
+    thead th:first-child, tbody td:first-child { position: static; box-shadow: none; }
+    tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
+    thead th:first-child { position: sticky; left: auto; }
 }
 @media (max-width: 560px) {
     .page-title { font-size: 19px; }
@@ -644,6 +663,16 @@ function render(list) {
     for (let i = 0; i < list.length; i++) parts[i] = list[i].html;
     tbody.innerHTML = parts.join('');
 }
+
+/* ---------------- tap a row to highlight it ---------------- */
+tbody.addEventListener('click', function (e) {
+    const tr = e.target.closest('tr');
+    if (!tr || !tbody.contains(tr)) return;
+    const was = tr.classList.contains('sel');
+    const prev = tbody.querySelector('tr.sel');
+    if (prev) prev.classList.remove('sel');
+    if (!was) tr.classList.add('sel');
+});
 
 /* ---------------- filter ---------------- */
 function applyFilters() {
