@@ -234,6 +234,10 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px v
 input::placeholder { color: var(--text-faint); }
 input:user-invalid, select:user-invalid { border-color: var(--bad); }
 input.bad { border-color: var(--bad); }
+.field .hint { font-size: 11.5px; color: var(--text-faint); line-height: 1.45; min-height: 1em; }
+.field .hint b { color: var(--text-dim); font-weight: 600; }
+.field .hint.warn { color: var(--warn); }
+.field .hint.warn b { color: var(--warn); }
 
 /* Total Units - the computed figure, shown as a result panel */
 .total {
@@ -432,6 +436,7 @@ input.bad { border-color: var(--bad); }
                     <div class="field">
                         <label for="initial_reading">Initial Reading <span class="req">*</span><span class="unit">kWh</span></label>
                         <input type="number" step="1" inputmode="numeric" id="initial_reading" name="initial_reading" required>
+                        <div class="hint" id="initialHint" aria-live="polite"></div>
                     </div>
                     <div class="field">
                         <label for="final_reading">Final Reading <span class="req">*</span><span class="unit">kWh</span></label>
@@ -561,6 +566,91 @@ function calculateTotalUnits() {
 initialInput.addEventListener('input', calculateTotalUnits);
 finalInput.addEventListener('input', calculateTotalUnits);
 
+/* ---------------- previous reading ----------------
+   Initial Reading is filled with the Final Reading of the latest month
+   recorded *before* the chosen Month / Year for the same incomer. It stays
+   editable - e.g. after a meter change. Latest month, not last row: a month
+   is sometimes entered late, so the last row typed is not always the latest. */
+const KWH_URL = 'https://sheets.googleapis.com/v4/spreadsheets/1st9oYw9k0MOvo4stufDBFfn51wyn810iMWySKerzdyE/values/Sheet1!B2:E?key=AIzaSyDOR5d4DF7ee5FSGCzxMXGuIKoFBsldreY';
+const hintEl = $('initialHint');
+let history = null;          // location -> [{ month, initial, final }]
+let historyFailed = false;
+let autoValue = null;        // the value we put in the box, so a user's own edit is kept
+
+function loadHistory() {
+    historyFailed = false;
+    return fetch(KWH_URL)
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (data) {
+            const map = {};
+            (data.values || []).forEach(function (row) {
+                const loc = String(row[0] || '').trim(), month = String(row[1] || '').trim();
+                const fin = String(row[3] == null ? '' : row[3]).trim();
+                if (!loc || !/^\d{4}-\d{2}$/.test(month) || fin === '' || isNaN(Number(fin))) return;
+                (map[loc] = map[loc] || []).push({ month: month, initial: row[2], final: fin });
+            });
+            history = map;
+        })
+        .catch(function (err) { console.error('Previous readings:', err); historyFailed = true; });
+}
+
+function monthLabel(ym) {
+    const d = new Date(ym + '-01T00:00:00');
+    return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+}
+function setHint(html, warn) {
+    hintEl.innerHTML = html;
+    hintEl.classList.toggle('warn', !!warn);
+}
+
+// force: the location changed, so the old figure no longer applies
+function prefillInitial(force) {
+    const loc = $('location').value, month = $('month_year').value;
+    if (!loc) { setHint(''); return; }
+    if (history === null) {
+        setHint(historyFailed ? 'Could not load previous readings — enter the initial reading.' : 'Looking up the last reading…');
+        return;
+    }
+    const rows = history[loc] || [];
+    let prev = null, same = null;
+    rows.forEach(function (r) {
+        if (r.month < month && (!prev || r.month >= prev.month)) prev = r;
+        if (r.month === month) same = r;
+    });
+
+    const untouched = initialInput.value === '' || initialInput.value === autoValue;
+    if (prev && (force || untouched)) {
+        initialInput.value = prev.final;
+        autoValue = initialInput.value;
+        calculateTotalUnits();
+    } else if (!prev && (force || untouched)) {
+        initialInput.value = '';
+        autoValue = null;
+        calculateTotalUnits();
+    }
+
+    if (same) {
+        setHint('<b>' + monthLabel(month) + ' is already recorded</b> for this incomer (final ' +
+                Number(same.final).toLocaleString() + '). Check before submitting again.', true);
+    } else if (prev && initialInput.value !== '' && Number(initialInput.value) !== Number(prev.final)) {
+        setHint('Last final reading was <b>' + Number(prev.final).toLocaleString() + '</b> (' +
+                monthLabel(prev.month) + '). The figure above is different — keep it only if the meter was replaced or reset.', true);
+    } else if (prev) {
+        setHint('From the last final reading, <b>' + Number(prev.final).toLocaleString() + '</b> (' +
+                monthLabel(prev.month) + '). Change it if the meter was replaced or reset.');
+    } else {
+        setHint('No earlier reading on record for this incomer — enter the initial reading.');
+    }
+}
+
+$('location').addEventListener('change', function () { prefillInitial(true); });
+$('month_year').addEventListener('change', function () { prefillInitial(false); });
+initialInput.addEventListener('input', function () {
+    if (initialInput.value !== autoValue) autoValue = null;
+    if ($('location').value && history) prefillInitial(false);
+});
+loadHistory().then(function () { if ($('location').value) prefillInitial(false); });
+
 /* ---------------- defaults ---------------- */
 function setThisMonth() {
     const d = new Date();
@@ -579,6 +669,8 @@ function setStatus(kind, text, spinner) {
 function resetAll() {
     form.reset();
     setThisMonth();
+    autoValue = null;
+    setHint('');
     calculateTotalUnits();
 }
 $('resetBtn').addEventListener('click', function () { resetAll(); setStatus('', ''); });
@@ -612,6 +704,10 @@ form.addEventListener('submit', function (e) {
         })
         .then(function (data) {
             if (data && data.result === 'success') {
+                if (history) {
+                    (history[payload.location] = history[payload.location] || [])
+                        .push({ month: payload.month_year, initial: payload.initial_reading, final: payload.final_reading });
+                }
                 resetAll();
                 setStatus('ok', 'Saved — ' + savedLocation + ' recorded.');
             } else {
