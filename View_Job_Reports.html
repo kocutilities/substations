@@ -43,6 +43,8 @@
     --surface:       #101829;
     --surface-2:     #162034;
     --surface-3:     #1c2842;
+    --row-alt:       #141e33;
+    --row-sel:       #1d2f5c;
     --border:        rgba(255,255,255,.08);
     --border-strong: rgba(255,255,255,.14);
     --text:          #e9eefb;
@@ -69,6 +71,8 @@ html[data-theme="light"] {
     --surface:       #ffffff;
     --surface-2:     #f5f7fc;
     --surface-3:     #eaeefa;
+    --row-alt:       #f1f4fb;
+    --row-sel:       #dbe5fd;
     --border:        rgba(15,23,42,.10);
     --border-strong: rgba(15,23,42,.18);
     --text:          #0f172a;
@@ -359,7 +363,13 @@ tbody td {
     font-size: 13px;
 }
 tbody tr { transition: background .14s; cursor: pointer; }
+/* Two shades for alternate rows, and a tapped row stays highlighted,
+   so a row can be followed while the table scrolls sideways on a phone. */
+tbody tr:nth-child(even) { background: var(--row-alt); }
 tbody tr:hover { background: var(--surface-2); }
+tbody tr.sel, tbody tr.sel:hover { background: var(--row-sel); }
+tbody tr.sel td { color: var(--text); box-shadow: inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
+tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
 tbody tr:last-child td { border-bottom: none; }
 
 .c-loc  { font-weight: 600; min-width: 150px; }
@@ -771,10 +781,15 @@ $('clearBtn').addEventListener('click', function () {
     applyFilters();
 });
 
-// Click a row to expand its full job report
+// Click a row to highlight it, and to expand its full job report
 tbody.addEventListener('click', function (e) {
     const tr = e.target.closest('tr');
-    if (!tr || !tr.classList.contains('has-more')) return;
+    if (!tr || !tbody.contains(tr)) return;
+    const was = tr.classList.contains('sel');
+    const prev = tbody.querySelector('tr.sel');
+    if (prev) prev.classList.remove('sel');
+    if (!was) tr.classList.add('sel');
+    if (!tr.classList.contains('has-more')) return;
     tr.classList.toggle('open');
     const hint = tr.querySelector('.more-hint');
     if (hint) hint.textContent = tr.classList.contains('open') ? 'Show less' : 'Show more';
