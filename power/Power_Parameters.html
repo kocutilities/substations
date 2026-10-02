@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+/* koc-sg-guard - sign-in check. Runs before anything else on the page.
+   Still a front door, not a lock: the pages are static files, so this runs
+   on the visitor's own machine and can be bypassed by anyone determined.
+   It stops casual access and an unattended screen, nothing more. */
+(function () {
+    var ok = false;
+    try {
+        var s = JSON.parse(localStorage.getItem('koc-sg-session') || 'null');
+        ok = !!(s && s.user && s.until && Date.now() < s.until);
+        if (!ok) localStorage.removeItem('koc-sg-session');   /* expired */
+    } catch (e) { ok = false; }
+    if (ok) return;
+    /* remember where they were going, so signing in takes them there */
+    try {
+        sessionStorage.setItem('koc-sg-after-login',
+            'home.html'   /* the login only reopens pages in its own folder */);
+    } catch (e) { /* ignore */ }
+    document.documentElement.style.visibility = 'hidden';     /* no flash of the page */
+    /* stop parsing here, so no later script on the page fetches data */
+    if (window.stop) window.stop();
+    location.replace('../index.html');
+})();
+</script>
+<title>Power Parameters · Substations &amp; Generators</title>
+<link rel="icon" href="../assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="sites/index.js" onerror="window.SITE_INDEX=null"></script>
+<style>
+/* ==========================================================================
+   Version 2 - the dense instrument-panel look: every pixel a measurement,
+   the chrome out of the way. Same data and same code as index.html (app.js);
+   only the arrangement and the palette differ.
+   ========================================================================== */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;
+    --warn:          #fbbf24;
+    --bad:           #f87171;
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        6px;
+
+    /* Chart series - validated (dataviz validator) against --surface #101829.
+       Phases keep the R / Y / B convention, stepped so red and yellow stay
+       distinct for colour-blind readers. */
+    --ph-r:   #cf3f46;
+    --ph-y:   #b08e00;
+    --ph-b:   #3987e5;
+    --ph-n:   #7d88a6;
+    --pw-kw:  #9085e9;
+    --pw-kvar:#d95926;
+    --pw-kva: #199e70;
+    --per-1:  #3987e5;
+    --per-2:  #d95926;
+    --per-3:  #199e70;
+}
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #eef1f8;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f5f7fc;
+    --surface-3:     #eaeefa;
+    --border:        rgba(15,23,42,.10);
+    --border-strong: rgba(15,23,42,.18);
+    --text:          #0f172a;
+    --text-dim:      #55627d;
+    --text-faint:    #7c88a3;
+    --accent:        #2f5fe0;
+    --accent-2:      #7c3aed;
+    --accent-soft:   rgba(47,95,224,.10);
+    --shadow:        0 16px 34px -20px rgba(15,23,42,.35);
+
+    /* validated against --surface #ffffff; yellow and green fall under 3:1,
+       so every chart here also carries a legend, labels or the table view */
+    --ph-r:   #e34948;
+    --ph-y:   #eda100;
+    --ph-b:   #2a78d6;
+    --ph-n:   #7c879e;
+    --pw-kw:  #4a3aa7;
+    --pw-kvar:#eb6834;
+    --pw-kva: #1baf7a;
+    --per-1:  #2a78d6;
+    --per-2:  #eb6834;
+    --per-3:  #1baf7a;
+}
+
+/* v2 keeps the instrument-panel layout; the palette is v1's, so the two pages
+   are the same product seen two ways rather than two different products. */
+:root { --good: #34d399; --warn: #fbbf24; --bad: #f87171; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+    background: var(--bg); color: var(--text); font-size: 13px;
+    font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(76,125,255,.18), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(139,92,246,.13), transparent 60%);
+}
+html[data-theme="light"] body::before {
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(47,95,224,.10), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(124,58,237,.08), transparent 60%);
+}
+.topbar, .filters, .wrap { position: relative; z-index: 1; }
+
+/* --- top bar ------------------------------------------------------------ */
+/* Top bar and range row stick together. Separately, the range row scrolled
+   up underneath the bar; a sticky offset in pixels would be wrong as soon as
+   the location name wrapped and changed the bar's height. */
+.stickyhead { position: sticky; top: 0; z-index: 40; }
+/* An expanded panel fills the window and brings the range/zoom bar with it,
+   but .wrap carries z-index:1, so the panel's z-index:60 is trapped inside
+   that stacking context and the sticky header painted straight over the
+   panel's head and controls. The header has nothing to do while a panel is
+   expanded - the page cannot even scroll - so it stands down. */
+body.has-expanded .stickyhead { display: none; }
+.topbar {
+    display: flex; align-items: center;
+    /* 7px was fine for a line of text; the location control is taller and sat
+       against the top edge of the window. */
+    gap: 12px; padding: 12px 12px 10px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+/* Home, theme and sign out: the same buttons as the rest of the site */
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+.topbar-actions .tb {
+    font-family: inherit; font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    text-decoration: none;
+    transition: background .16s, border-color .16s, transform .12s;
+}
+.topbar-actions .tb:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.topbar-actions .tb:active { transform: translateY(1px); }
+.topbar-actions .tb.icon-btn { padding: 9px 11px; }
+.topbar-actions .tb.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 22px -12px rgba(76,125,255,.95);
+}
+.topbar-actions .tb.btn-primary:hover { filter: brightness(1.08); }
+.topbar-actions svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+@media (max-width: 560px) { .topbar-actions .hide-sm { display: none; } }
+
+.burger {
+    display: grid; place-items: center; width: 32px; height: 30px; flex: none;
+    background: none; border: 1px solid transparent; border-radius: 4px;
+    color: var(--text-dim); cursor: pointer;
+}
+.burger:hover, .menu-wrap:hover .burger { background: var(--surface-3); color: var(--text); }
+.burger svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2; fill: none; }
+/* overflow:hidden clipped the select's focus ring and its drop shadow; the
+   control brings its own max-width, so the ellipsis is no longer needed. */
+.title { font-size: 14px; font-weight: 600; letter-spacing: .1px; min-width: 0; }
+/* The subtitle used to sit inline after a one-line title, so it carried a
+   left margin. Under the location control it is its own row, where that
+   margin only knocked it out of line with the LOCATION label above. */
+.title .sub { color: var(--text-faint); font-weight: 400; font-size: 12px;
+              display: block; margin: 5px 0 0; }
+.spacer { flex: 1 1 auto; }
+
+/* The menu is a hover popup, not a column: a survey page should spend its
+   width on measurements, not on a list of sites you look at once a day. */
+.menu-wrap { position: relative; }
+.menu {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; min-width: 290px;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: 4px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.55); padding: 6px; display: none;
+}
+.menu-wrap:hover .menu, .menu-wrap:focus-within .menu, .menu.open { display: block; }
+.menu-head { font-size: 10.5px; text-transform: uppercase; letter-spacing: .7px;
+             color: var(--text-faint); padding: 6px 8px 4px; }
+.menu a {
+    display: flex; gap: 9px; align-items: flex-start; padding: 7px 8px; border-radius: 3px;
+    color: var(--text-dim); text-decoration: none; font-size: 12.5px;
+}
+.menu a:hover { background: var(--surface-3); color: var(--text); }
+.menu a.active { background: var(--surface-2); color: var(--text); box-shadow: inset 2px 0 0 var(--accent); }
+.menu a .when { display: block; color: var(--text-faint); font-size: 11px; margin-top: 2px; }
+.menu .sep { height: 1px; background: var(--border); margin: 5px 0; }
+.menu button {
+    width: 100%; text-align: left; padding: 7px 8px; border-radius: 3px; font: inherit;
+    font-size: 12.5px; background: none; border: 0; color: var(--text-dim); cursor: pointer;
+}
+.menu button:hover { background: var(--surface-3); color: var(--text); }
+.menu button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+/* --- controls ----------------------------------------------------------- */
+.filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+           padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.filters-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .7px; color: var(--text-faint); }
+.filters-meta { font-size: 11.5px; color: var(--text-faint); margin-left: auto; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button {
+    background: var(--surface-2); border: 0; border-right: 1px solid var(--border);
+    color: var(--text-dim); font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+}
+.seg button:last-child { border-right: 0; }
+.seg button:hover { background: var(--surface-3); color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-dim); }
+.led { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.status.stale .led { background: var(--warn); }
+.status.dead .led  { background: var(--bad); }
+.icon-btn { background: none; border: 1px solid var(--border); border-radius: 3px;
+            color: var(--text-dim); cursor: pointer; padding: 3px 7px; font: inherit; font-size: 12px; }
+.icon-btn:hover { background: var(--surface-3); color: var(--text); }
+
+/* --- panels ------------------------------------------------------------- */
+.wrap { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.row { display: grid; gap: 8px; }
+.row.stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.row.r-2   { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.row.r-3   { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.row.r-2-1 { grid-template-columns: 2fr 1fr; }
+.panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 6px 8px 8px; display: flex; flex-direction: column; min-width: 0;
+}
+.panel-head { display: flex; align-items: baseline; gap: 8px; padding: 1px 2px 6px; }
+.panel h2 { margin: 0; font-size: 12px; font-weight: 500; color: var(--text-dim); letter-spacing: .2px; }
+.panel .hint { font-size: 10.5px; color: var(--text-faint); margin-left: auto; white-space: nowrap;
+               overflow: hidden; text-overflow: ellipsis; }
+.expand-btn { background: none; border: 1px solid var(--border); color: var(--text-faint);
+              border-radius: 3px; padding: 1px 6px; font: inherit; font-size: 11px; cursor: pointer; flex: none; }
+.expand-btn:hover { background: var(--surface-3); color: var(--text); }
+.panel.expanded { position: fixed; inset: 8px; z-index: 60; margin: 0; overflow: auto;
+                  box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.panel.expanded .chart-box, .panel.expanded .chart-box.short { height: calc(100vh - 190px); }
+.panel.expanded .filters { margin: 0 0 8px; background: var(--surface-2); border-radius: 3px; }
+.filters.no-zoom #zoomLabel, .filters.no-zoom #zoomSeg { display: none; }
+body.has-expanded { overflow: hidden; }
+
+.chart-box { position: relative; height: 230px; }
+.chart-box.short { height: 165px; }
+.chart-box.tall { height: 300px; }
+canvas.pan-drag { cursor: grab; }
+canvas.pan-drag:active { cursor: grabbing; }
+.empty { position: absolute; inset: 0; display: none; place-items: center; text-align: center;
+         color: var(--text-faint); font-size: 12px; padding: 0 16px; }
+
+/* --- stat tiles --------------------------------------------------------- */
+.stat { align-items: center; justify-content: center; text-align: center; padding: 10px 8px 12px; }
+.stat .card-title { font-size: 11.5px; color: var(--text-dim); margin-bottom: 4px; }
+.stat .card-value { font-size: 30px; font-weight: 600; color: var(--pw-kva); line-height: 1.1;
+                    font-variant-numeric: tabular-nums; }
+.stat .card-value .u { font-size: 15px; color: var(--text-dim); margin-left: 3px; font-weight: 400; }
+.stat .card-sub { font-size: 11px; color: var(--text-faint); margin-top: 3px; }
+.stat.v .card-value  { color: var(--ph-b); }
+.stat.i .card-value  { color: var(--ph-y); }
+.stat.e .card-value  { color: var(--accent-2); }
+.chip { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 8px;
+        font-size: 10px; font-weight: 600; }
+.chip.ok { background: rgba(115,191,105,.16); color: var(--good); }
+.chip.watch { background: rgba(242,204,12,.16); color: var(--warn); }
+.chip.bad { background: rgba(242,73,92,.16); color: var(--bad); }
+.gauge-wrap { position: relative; height: 96px; }
+.gauge-read { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center;
+              font-size: 24px; font-weight: 600; color: var(--good); font-variant-numeric: tabular-nums; }
+
+/* --- legend tables, as on the reference panel --------------------------- */
+table.leg { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px;
+            font-variant-numeric: tabular-nums; }
+table.leg th { color: var(--text-faint); font-weight: 500; text-align: right; padding: 2px 4px;
+               border-bottom: 1px solid var(--border); font-size: 10.5px; }
+table.leg th:first-child { text-align: left; }
+table.leg td { padding: 2px 4px; text-align: right; color: var(--text-dim); }
+table.leg td:first-child { text-align: left; color: var(--text); }
+table.leg td.cur { color: var(--text); }
+.sw { display: inline-block; width: 9px; height: 2px; border-radius: 1px; margin-right: 6px;
+      vertical-align: middle; }
+
+/* --- observations and recommendations ------------------------------------ */
+.finding { border-left: 3px solid var(--border-strong); padding: 9px 12px 10px;
+           margin: 0 0 9px; background: var(--surface-2); border-radius: 0 4px 4px 0; }
+.finding:last-child { margin-bottom: 0; }
+.finding.action { border-left-color: var(--bad, #f87171); }
+.finding.watch  { border-left-color: #f0b429; }
+.finding.ok     { border-left-color: var(--good, #34d399); }
+.finding.info   { border-left-color: var(--text-faint); }
+.f-head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.f-tag { font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase; font-weight: 700;
+         padding: 2px 7px; border-radius: 3px; background: var(--surface-3); color: var(--text-dim);
+         flex: none; }
+.finding.action .f-tag { background: rgba(248,113,113,.16); color: var(--bad, #f87171); }
+.finding.watch  .f-tag { background: rgba(240,180,41,.16); color: #f0b429; }
+.finding.ok     .f-tag { background: rgba(52,211,153,.14); color: var(--good, #34d399); }
+.f-title { font-size: 13px; font-weight: 650; color: var(--text); }
+.f-detail { font-size: 12px; color: var(--text-dim); margin-top: 5px; line-height: 1.55; }
+.f-action { font-size: 12px; color: var(--text); margin-top: 6px; line-height: 1.55; }
+.f-action b { color: var(--accent, #4c7dff); margin-right: 5px; }
+.f-clause { font-size: 10.5px; color: var(--text-faint); margin-top: 7px; font-style: italic; }
+
+/* --- readings table ----------------------------------------------------- */
+.table-wrap { overflow: auto; max-height: 340px; }
+table.readings { width: 100%; border-collapse: collapse; font-size: 11.5px;
+                 font-variant-numeric: tabular-nums; }
+table.readings th { position: sticky; top: 0; background: var(--surface-2); color: var(--text-faint);
+                    font-weight: 500; text-align: right; padding: 5px 7px; font-size: 10.5px;
+                    border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.readings th:first-child, table.readings td:first-child { text-align: left; }
+table.readings td { padding: 3px 7px; text-align: right; color: var(--text-dim);
+                    border-bottom: 1px solid rgba(255,255,255,.03); white-space: nowrap; }
+table.readings tr:hover td { background: var(--surface-2); color: var(--text); }
+
+.foot { color: var(--text-faint); font-size: 11px; padding: 2px 4px 10px; line-height: 1.5; }
+
+@media (max-width: 1100px) {
+    .row.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .row.r-3, .row.r-2, .row.r-2-1 { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="stickyhead">
+<div class="topbar">
+    <div class="title"><span class="page-title">Meter Trends</span>
+        <span class="sub" id="pageSub"></span></div>
+    <div class="spacer"></div>
+    <div class="topbar-actions">
+        <button class="tb icon-btn" id="themeBtn" type="button" aria-label="Toggle theme" title="Toggle light / dark"></button>
+        <button class="tb icon-btn" id="signOutBtn" type="button" aria-label="Sign out" title="Sign out"><svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg><span class="hide-sm">Sign out</span></button>
+        <a class="tb btn-primary" href="../home.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> <span class="hide-sm">Home</span></a>
+    </div>
+</div>
+
+<div class="filters">
+    <span class="filters-label">Range</span>
+    <div class="seg" id="rangeSeg">
+        <button type="button" data-hours="0.25" class="fine-only" hidden>15m</button>
+        <button type="button" data-hours="1" class="fine-only" hidden>1h</button>
+        <button type="button" data-hours="6">6h</button>
+        <button type="button" data-hours="24" aria-pressed="true">24h</button>
+        <button type="button" data-hours="168">7d</button>
+        <button type="button" data-hours="720">30d</button>
+        <button type="button" data-hours="0">All</button>
+    </div>
+    <span class="filters-label" id="zoomLabel">Zoom</span>
+    <div class="seg" id="zoomSeg">
+        <button type="button" id="panBack" title="Move back in time">&#9664;</button>
+        <button type="button" id="zoomOut" title="Zoom out">&minus;</button>
+        <button type="button" id="zoomIn" title="Zoom in">+</button>
+        <button type="button" id="panFwd" title="Move forward in time">&#9654;</button>
+        <button type="button" id="zoomReset" title="Whole range">Reset</button>
+    </div>
+    <span class="filters-meta" id="rangeMeta"></span>
+</div>
+</div>
+
+<div class="wrap">
+
+
+    <div class="row stats">
+        <section class="panel stat">
+            <div class="card-title">Active power</div>
+            <div class="card-value" id="kpiKw">–</div>
+            <div class="card-sub" id="kpiKwSub">&nbsp;</div>
+        </section>
+        <section class="panel stat v">
+            <div class="card-title">Voltage L-L</div>
+            <div class="card-value" id="kpiV">–</div>
+            <div class="card-sub" id="kpiVSub">&nbsp;</div>
+            <div class="card-sub" id="kpiVPk">&nbsp;</div>
+        </section>
+        <section class="panel stat">
+            <div class="card-title">Power factor</div>
+            <div class="gauge-wrap">
+                <canvas id="gPf"></canvas>
+                <div class="gauge-read" id="kpiPf">–</div>
+            </div>
+            <div class="card-sub" id="kpiPfSub">&nbsp;</div>
+        </section>
+        <section class="panel stat i">
+            <div class="card-title">Current (average)</div>
+            <div class="card-value" id="kpiI">–</div>
+            <div class="card-sub" id="kpiISub">&nbsp;</div>
+            <div class="card-sub" id="kpiIPk">&nbsp;</div>
+            <div class="card-sub" id="kpiILw">&nbsp;</div>
+        </section>
+    </div>
+
+    <div class="row stats">
+        <section class="panel stat e">
+            <div class="card-title">Energy used</div>
+            <div class="card-value" id="kpiE">–</div>
+            <div class="card-sub" id="kpiESub">&nbsp;</div>
+        </section>
+        <section class="panel stat">
+            <div class="card-title">Peak load</div>
+            <div class="card-value" id="kpiPk">–</div>
+            <div class="card-sub" id="kpiPkSub">&nbsp;</div>
+        </section>
+        <section class="panel stat">
+            <div class="card-title">Load factor</div>
+            <div class="card-value" id="kpiLf">–</div>
+            <div class="card-sub" id="kpiLfSub">&nbsp;</div>
+        </section>
+        <section class="panel stat i">
+            <div class="card-title">Current unbalance</div>
+            <div class="card-value" id="kpiUb">–</div>
+            <div class="card-sub" id="kpiUbSub">&nbsp;</div>
+        </section>
+    </div>
+
+    <div class="row r-2-1">
+        <section class="panel">
+            <div class="panel-head"><h2>Power</h2><span class="hint" id="hintPower"></span></div>
+            <div class="chart-box tall"><canvas id="cPower" aria-label="Power over time" role="img"></canvas>
+                <div class="empty">No readings in this range</div></div>
+            <table class="leg" id="legPower"></table>
+        </section>
+        <section class="panel">
+            <div class="panel-head"><h2>Voltage</h2><span class="hint" id="hintVpair">R-Y · Y-B · B-R</span></div>
+            <div class="chart-box tall"><canvas id="cVpair" aria-label="Phase voltages over time" role="img"></canvas>
+                <div class="empty">No readings in this range</div></div>
+            <table class="leg" id="legVpair"></table>
+        </section>
+    </div>
+
+    <div class="row r-2-1">
+        <section class="panel">
+            <div class="panel-head"><h2>Current</h2><span class="hint" id="hintCurrent">R · Y · B and neutral</span></div>
+            <div class="chart-box"><canvas id="cCurrent" aria-label="Phase currents over time" role="img"></canvas>
+                <div class="empty">No readings in this range</div></div>
+            <table class="leg" id="legCurrent"></table>
+        </section>
+        <section class="panel">
+            <div class="panel-head"><h2>Power factor</h2><span class="hint">1.000 is ideal</span></div>
+            <div class="chart-box"><canvas id="cPf" aria-label="Power factor over time" role="img"></canvas>
+                <div class="empty">No readings in this range</div></div>
+        </section>
+    </div>
+
+    <!-- Harmonics. Hidden unless the recording carries THD: only the RISH 3430
+         visits with harmonics enabled do, and an empty chart would imply a
+         clean supply rather than an unasked question. -->
+    <div class="row r-2-1" id="thdRow" hidden>
+        <section class="panel">
+            <div class="panel-head"><h2>Current THD</h2>
+                <span class="hint" id="hintThd">per phase, % of fundamental</span></div>
+            <div class="chart-box"><canvas id="cThdI" aria-label="Current THD over time" role="img"></canvas>
+                <div class="empty">No readings in this range</div></div>
+            <table class="leg" id="legThd"></table>
+        </section>
+        <section class="panel">
+            <div class="panel-head"><h2>Voltage THD</h2>
+                <span class="hint">what other equipment on the board sees</span></div>
+            <div class="chart-box"><canvas id="cThdV" aria-label="Voltage THD over time" role="img"></canvas>
+                <div class="empty">No readings in this range</div></div>
+        </section>
+    </div>
+
+    <div class="row r-3">
+        <section class="panel">
+            <div class="panel-head"><h2 id="hEnergy">Energy per hour</h2><span class="hint" id="hintEnergy">kWh</span></div>
+            <div class="chart-box short"><canvas id="cEnergy" aria-label="Energy per hour" role="img"></canvas>
+                <div class="empty">No readings in this range</div></div>
+        </section>
+        <section class="panel">
+            <div class="panel-head"><h2>Average current per phase</h2><span class="hint">A, over the selected range</span></div>
+            <div class="chart-box short"><canvas id="cPhaseAvg" aria-label="Average current per phase" role="img"></canvas>
+                <div class="empty">No readings in this range</div></div>
+        </section>
+        <section class="panel">
+            <div class="panel-head"><h2>Energy by time of day</h2><span class="hint" id="hintPeriod"></span></div>
+            <div class="chart-box short"><canvas id="cPeriod" aria-label="Energy by period" role="img"></canvas>
+                <div class="empty">Not enough of the day recorded yet</div></div>
+        </section>
+    </div>
+
+    <section class="panel">
+        <div class="panel-head"><h2>Observations &amp; recommendations</h2>
+            <span class="hint">against KOC standards &middot; for the range shown</span></div>
+        <div id="assessBody"></div>
+    </section>
+
+    <div class="foot" id="foot"></div>
+
+    <!-- kept for the shared code; this layout shows the CT in the menu instead -->
+    <div hidden>
+        <span class="crumb" id="ctCrumb"></span><span id="crumbs"></span>
+        <span id="sideSite"></span><span id="sideDetail"></span>
+    </div>
+</div>
+
+<script src="app.js?v=1790931886"></script>
+<script>
+/* Sign out - same session key as the rest of the site. */
+document.getElementById('signOutBtn').addEventListener('click', function () {
+    try { localStorage.removeItem('koc-sg-session'); } catch (e) { /* private mode */ }
+    location.replace('../index.html');
+});
+</script>
+</body>
+</html>

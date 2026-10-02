@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* koc-sg-guard - sign-in check. Runs before anything else on the page.
+   Still a front door, not a lock: the pages are static files, so this runs
+   on the visitor's own machine and can be bypassed by anyone determined.
+   It stops casual access and an unattended screen, nothing more. */
+(function () {
+    var ok = false;
+    try {
+        var s = JSON.parse(localStorage.getItem('koc-sg-session') || 'null');
+        ok = !!(s && s.user && s.until && Date.now() < s.until);
+        if (!ok) localStorage.removeItem('koc-sg-session');   /* expired */
+    } catch (e) { ok = false; }
+    if (ok) return;
+    /* remember where they were going, so signing in takes them there */
+    try {
+        sessionStorage.setItem('koc-sg-after-login',
+            decodeURIComponent(location.pathname.split('/').pop()) + location.search + location.hash);
+    } catch (e) { /* ignore */ }
+    document.documentElement.style.visibility = 'hidden';     /* no flash of the page */
+    /* stop parsing here, so no later script on the page fetches data */
+    if (window.stop) window.stop();
+    location.replace('index.html');
+})();
+</script>
+<title>Test Run Schedule · Substations &amp; Generators</title>
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+<style>
+/* ============================================================
+   Design tokens - shared with the other pages in this folder
+   ============================================================ */
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;
+    --good-soft:     rgba(52,211,153,.14);
+    --warn:          #fbbf24;
+    --warn-soft:     rgba(251,191,36,.14);
+    --bad:           #f87171;
+    --bad-soft:      rgba(248,113,113,.14);
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        18px;
+    --sidebar-w:     252px;
+}
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #eef1f8;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f5f7fc;
+    --surface-3:     #eaeefa;
+    --border:        rgba(15,23,42,.10);
+    --border-strong: rgba(15,23,42,.18);
+    --text:          #0f172a;
+    --text-dim:      #55627d;
+    --text-faint:    #7c88a3;
+    --accent:        #2f5fe0;
+    --accent-2:      #7c3aed;
+    --accent-soft:   rgba(47,95,224,.10);
+    --good:          #059669;
+    --good-soft:     rgba(5,150,105,.11);
+    --warn:          #b45309;
+    --warn-soft:     rgba(180,83,9,.11);
+    --bad:           #dc2626;
+    --bad-soft:      rgba(220,38,38,.10);
+    --shadow:        0 16px 34px -20px rgba(15,23,42,.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(76,125,255,.20), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(139,92,246,.15), transparent 60%);
+}
+html[data-theme="light"] body::before {
+    background:
+        radial-gradient(760px 420px at 18% -8%, rgba(47,95,224,.11), transparent 62%),
+        radial-gradient(680px 400px at 88% 4%,  rgba(124,58,237,.09), transparent 60%);
+}
+
+/* ============================================================ Shell */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+.sidebar {
+    width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    padding: 20px 14px;
+    display: flex; flex-direction: column; gap: 22px;
+    position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
+.brand-badge {
+    width: 42px; height: 42px; flex: 0 0 42px;
+    border-radius: 12px;
+    background: linear-gradient(150deg, #1c2f5d, #3f1e5a);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 16px -6px rgba(76,125,255,.7);
+}
+.brand-badge img { width: 27px; height: auto; display: block; }
+.brand-name { font-size: 14px; font-weight: 700; letter-spacing: .2px; }
+.brand-sub  { font-size: 11px; color: var(--text-faint); }
+
+.nav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 0 10px; margin-bottom: 7px;
+}
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 10px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border: 1px solid transparent;
+    transition: background .16s, color .16s;
+}
+.nav a:hover { background: var(--surface-2); color: var(--text); }
+.nav a.active {
+    background: var(--accent-soft); color: var(--text);
+    border-color: rgba(76,125,255,.30); font-weight: 600;
+}
+.nav a .ico { display: grid; place-items: center; flex: 0 0 18px; opacity: .9; }
+.nav a.active .ico { opacity: 1; color: var(--accent); }
+
+svg.i {
+    width: 16px; height: 16px; fill: none; stroke: currentColor;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex: 0 0 auto; display: block;
+}
+
+.side-foot { margin-top: auto; }
+.side-card {
+    border-radius: 14px; padding: 14px;
+    background: linear-gradient(150deg, rgba(76,125,255,.20), rgba(139,92,246,.16));
+    border: 1px solid var(--border-strong);
+}
+.side-card h4 { margin: 0 0 3px; font-size: 12.5px; }
+.side-card p  { margin: 0; font-size: 11px; color: var(--text-dim); }
+
+/* ============================================================ Main */
+.main { flex: 1; min-width: 0; padding: 22px 26px 34px; }
+
+.topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.page-title { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: -.3px; }
+.page-sub   { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+
+.chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 13px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 12.5px; color: var(--text-dim); white-space: nowrap;
+}
+
+button, .btn {
+    font-family: inherit; font-size: 13px;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: background .16s, border-color .16s, transform .12s;
+}
+button:hover, .btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button:active { transform: translateY(1px); }
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 10px 22px -12px rgba(76,125,255,.95);
+}
+.btn-primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.icon-btn { padding: 9px 11px; }
+
+/* KPI cards */
+.kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+    gap: 13px; margin-bottom: 16px;
+}
+.kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 17px;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.kpi::after {
+    content: ''; position: absolute; right: -34px; top: -34px;
+    width: 108px; height: 108px; border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft), transparent 70%);
+}
+.kpi-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--text-faint); font-weight: 600; margin-bottom: 9px;
+}
+.kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -.5px; line-height: 1.15; }
+.kpi-foot { font-size: 11.5px; color: var(--text-dim); margin-top: 5px; }
+
+.panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.toolbar {
+    padding: 14px 16px; display: flex; flex-wrap: wrap;
+    gap: 10px; align-items: center; margin-bottom: 14px;
+}
+.field { position: relative; display: flex; align-items: center; }
+.field .fico { position: absolute; left: 11px; color: var(--text-faint); pointer-events: none; }
+input[type="text"], select {
+    font-family: inherit; font-size: 13px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 9px 12px; outline: none;
+    transition: border-color .16s, box-shadow .16s;
+}
+input[type="text"] { padding-left: 32px; width: 260px; }
+select { min-width: 178px; cursor: pointer; }
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input::placeholder { color: var(--text-faint); }
+.spacer { flex: 1 1 auto; }
+.result-count { font-size: 12.5px; color: var(--text-dim); white-space: nowrap; }
+
+/* ============================================================ Table */
+.table-wrap { overflow: auto; max-height: calc(100vh - 336px); border-radius: var(--radius); }
+table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 900px; }
+
+thead th {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--surface-3); color: var(--text-dim);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; text-align: left;
+    padding: 12px 13px; white-space: nowrap;
+    border-bottom: 1px solid var(--border-strong);
+}
+tbody td {
+    padding: 10px 13px; border-bottom: 1px solid var(--border);
+    font-size: 13px; color: var(--text-dim); vertical-align: top;
+}
+tbody tr.site-start td { border-top: 1px solid var(--border-strong); }
+tbody tr:hover td { background: var(--surface-2); }
+tbody tr:last-child td { border-bottom: none; }
+
+td.c-sr  { color: var(--text-faint); font-variant-numeric: tabular-nums; width: 46px; }
+td.c-loc { color: var(--text); font-weight: 600; min-width: 186px; }
+td.c-brd { color: var(--text); font-weight: 500; min-width: 168px; }
+td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
+.sub-line {
+    display: block; font-weight: 400; font-size: 11.5px;
+    color: var(--text-faint); margin-top: 2px;
+}
+.dash { color: var(--text-faint); }
+
+.badge {
+    display: inline-block; padding: 4px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; white-space: nowrap;
+    background: var(--surface-3); color: var(--text-dim); border: 1px solid var(--border);
+}
+.badge.ss   { background: var(--accent-soft); color: var(--accent);  border-color: transparent; }
+.badge.gen  { background: var(--good-soft);   color: var(--good);    border-color: transparent; }
+.badge.none { background: var(--surface-3);   color: var(--text-faint); }
+
+.panel-head {
+    padding: 13px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-faint);
+}
+.panel-head .note {
+    text-transform: none; letter-spacing: 0; font-weight: 400;
+    font-size: 11.5px; color: var(--text-dim);
+}
+.query-line {
+    display: block; font-weight: 400; font-size: 11px;
+    color: var(--warn); margin-top: 3px; max-width: 260px;
+    text-transform: none; letter-spacing: 0; white-space: normal;
+}
+
+.state { padding: 54px 20px; text-align: center; color: var(--text-dim); }
+.state h3 { margin: 0 0 5px; color: var(--text); font-size: 15px; }
+.state p  { margin: 0; font-size: 13px; }
+
+.menu-btn { display: none; }
+.backdrop { display: none; }
+
+@media (max-width: 1000px) {
+    .sidebar {
+        position: fixed; z-index: 50; left: 0; top: 0;
+        transform: translateX(-100%); transition: transform .22s ease;
+        box-shadow: 0 0 50px rgba(0,0,0,.5);
+    }
+    .sidebar.open { transform: none; }
+    /* .app is its own stacking layer (z-index 1), which would trap the
+       sidebar under the backdrop - release it so taps reach the menu */
+    .app { z-index: auto; }
+    .backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 40; }
+    .menu-btn { display: inline-flex; }
+    .main { padding: 16px 15px 30px; }
+    .table-wrap { max-height: none; }
+    input[type="text"] { width: 100%; }
+    .field, select { flex: 1 1 190px; }
+}
+@media (max-width: 560px) {
+    .page-title { font-size: 19px; }
+    .kpi-value { font-size: 22px; }
+    .hide-sm { display: none; }
+}
+
+/* ---------- test run schedule ---------- */
+.slots { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+.slot {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 17px 15px;
+}
+.slot.due { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft), var(--shadow); }
+.slot-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.slot-head h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+.slot-date { margin: 3px 0 0; font-size: 12px; color: var(--text-dim); }
+.slot-date b { color: var(--text); font-weight: 600; }
+.slot-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+}
+.tag.crit    { background: var(--bad-soft);  color: var(--bad); }
+.tag.noncrit { background: var(--good-soft); color: var(--good); }
+.tag.count   { background: var(--surface-3); color: var(--text-dim); border-color: var(--border); }
+.tag.due     { background: var(--accent-soft); color: var(--accent); }
+.gens { list-style: none; margin: 13px 0 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.gens li {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 8px 10px; border-radius: 9px; background: var(--surface-2);
+    font-size: 13px;
+}
+.gens li:nth-child(even) { background: var(--surface-3); }
+.gen-name { font-weight: 600; color: var(--text); }
+.hv-dot {
+    width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%;
+    background: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft);
+    align-self: center;
+}
+.legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--text-dim); }
+.gen-kva { margin-left: auto; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.gen-note { flex-basis: 100%; font-size: 11px; color: var(--warn); }
+.rules { margin-top: 16px; }
+.rules ol { margin: 10px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 7px; }
+.rules li { font-size: 13px; color: var(--text-dim); }
+.rules li b { color: var(--text); }
+.panel-note { margin: 12px 0 0; font-size: 12px; color: var(--text-faint); line-height: 1.6; }
+.panel-note b { color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="app">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-badge"><img src="assets/koc-logo.png" alt="KOC"></div>
+            <div>
+                <div class="brand-name">Substations &amp; Generators</div>
+                <div class="brand-sub">Utilities Team E&amp;I I</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">View</div>
+            <nav class="nav">
+                <a href="View_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M15 5h3v15H6V5h3"/><path d="M9 11h6M9 15h4"/></svg></span> Daily Job Reports</a>
+                <a href="View_Generator_Test_Data.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></span> Generator Test Data</a>
+                <a href="Test_Run_Schedule.html" class="active"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/><path d="M8 15h3"/></svg></span> Test Run Schedule</a>
+                <a href="kWh_display.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8"/><path d="M3 21h18"/></svg></span> kWh Data</a>
+                <a href="Generator_details.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></svg></span> Generator Details</a>
+                <a href="#"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M8 9V5h8v4M8 14h8M8 17.5h5"/></svg></span> Substations &amp; Ele. Rooms</a>
+                <a href="dashboard.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span> Dashboard</a>
+                <a href="power/Power_Parameters.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8 4 4"/><path d="M3 21h18"/></svg></span> Power Parameters</a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Enter Data</div>
+            <nav class="nav">
+                <a href="Enter_Job_Reports.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Daily Job Report</a>
+                <a href="Enter_Generator_Test.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> Generator Test Run</a>
+                <a href="kWh_Reading.html"><span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span> kWh Readings</a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                <h4>Corporate Services Group</h4>
+                <p>Electrical &amp; Instrumentation Section</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+            <div style="display:flex; align-items:flex-start; gap:11px;">
+                <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+                <div>
+                    <h1 class="page-title">Generator Test Run Schedule</h1>
+                    <p class="page-sub">Which generators run in which week, and when they are next due</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Toggle light / dark"></button>
+                <button class="icon-btn" id="signOutBtn" type="button" aria-label="Sign out" title="Sign out"><svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg><span class="hide-sm">Sign out</span></button>
+                <a class="btn btn-primary" href="home.html"><svg class="i" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg> <span class="hide-sm">Home</span></a>
+            </div>
+        </div>
+
+        <section class="kpis">
+            <div class="kpi">
+                <div class="kpi-label">Generators</div>
+                <div class="kpi-value">27</div>
+                <div class="kpi-foot">24 standby and 3 portable</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Test Run Days</div>
+                <div class="kpi-value">5</div>
+                <div class="kpi-foot">Every month, by week and day</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Critical</div>
+                <div class="kpi-value">21</div>
+                <div class="kpi-foot">Of the 27 sets</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Next Test Run</div>
+                <div class="kpi-value" id="kpiNext">&mdash;</div>
+                <div class="kpi-foot" id="kpiNextFoot">&nbsp;</div>
+            </div>
+        </section>
+
+        <section class="slots">
+            <article class="slot" data-week="1" data-day="6">
+                <header class="slot-head">
+                    <div>
+                        <h2>1st Week &mdash; Saturday</h2>
+                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                    </div>
+                    <div class="slot-tags">
+                        <span class="tag crit">Critical</span>
+                        <span class="tag count">6 generators</span>
+                    </div>
+                </header>
+                <ul class="gens">
+                        <li class="gen"><span class="gen-name">Office Complex S/S 1</span><span class="gen-kva">415 V &middot; 810 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Office Complex S/S 3</span><span class="gen-kva">415 V &middot; 635 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Security Center</span><span class="gen-kva">415 V &middot; 2000 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Ahmad Al Jaber Exhibition Center</span><span class="gen-kva">415 V &middot; 350 kVA</span></li>
+                        <li class="gen"><span class="gen-name">White House</span><span class="gen-kva">415 V &middot; 365 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Guest House</span><span class="gen-kva">415 V &middot; 800 kVA</span></li>
+                </ul>
+            </article>
+            <article class="slot" data-week="2" data-day="5">
+                <header class="slot-head">
+                    <div>
+                        <h2>2nd Week &mdash; Friday</h2>
+                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                    </div>
+                    <div class="slot-tags">
+                        <span class="tag crit">Critical</span>
+                        <span class="tag count">5 generators</span>
+                    </div>
+                </header>
+                <ul class="gens">
+                        <li class="gen"><span class="hv-dot" title="440 V - 440 V and above" aria-label="440 V and above"></span><span class="gen-name">KOC Main Office</span><span class="gen-kva">440 V &middot; 1250 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Computer Center GEN-1</span><span class="gen-kva">415 V &middot; 1000 kVA</span></li>
+                        <li class="gen"><span class="hv-dot" title="440 V - 440 V and above" aria-label="440 V and above"></span><span class="gen-name">Computer Center GEN-2</span><span class="gen-kva">440 V &middot; 1360 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Office Complex S/S 2 GEN-1</span><span class="gen-kva">415 V &middot; 810 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Office Complex S/S 2 GEN-2</span><span class="gen-kva">415 V &middot; 1600 kVA</span></li>
+                </ul>
+            </article>
+            <article class="slot" data-week="2" data-day="6">
+                <header class="slot-head">
+                    <div>
+                        <h2>2nd Week &mdash; Saturday</h2>
+                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                    </div>
+                    <div class="slot-tags">
+                        <span class="tag noncrit">Non-Critical</span>
+                        <span class="tag count">6 generators</span>
+                    </div>
+                </header>
+                <ul class="gens">
+                        <li class="gen"><span class="gen-name">Fire Team Office</span><span class="gen-kva">380 V &middot; 65 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Al Tameer Yellow Building</span><span class="gen-kva">415 V &middot; 1100 kVA</span></li>
+                        <li class="gen has-note" title="moved from Ex-Anglo American School on 18 Jul 2026"><span class="gen-name">KPC</span><span class="gen-kva">415 V &middot; 165 kVA</span><span class="gen-note">moved from Ex-Anglo American School on 18 Jul 2026</span></li>
+                        <li class="gen"><span class="gen-name">Portable Generator 1</span><span class="gen-kva">415 V &middot; 82 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Portable Generator 2</span><span class="gen-kva">415 V &middot; 30 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Portable Generator 3</span><span class="gen-kva">415 V &middot; 30 kVA</span></li>
+                </ul>
+            </article>
+            <article class="slot" data-week="3" data-day="6">
+                <header class="slot-head">
+                    <div>
+                        <h2>3rd Week &mdash; Saturday</h2>
+                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                    </div>
+                    <div class="slot-tags">
+                        <span class="tag crit">Critical</span>
+                        <span class="tag count">5 generators</span>
+                    </div>
+                </header>
+                <ul class="gens">
+                        <li class="gen"><span class="gen-name">CSG</span><span class="gen-kva">416 V &middot; 706 kVA</span></li>
+                        <li class="gen"><span class="hv-dot" title="440 V - 440 V and above" aria-label="440 V and above"></span><span class="gen-name">Second Avenue New Offices</span><span class="gen-kva">440 V &middot; 800 kVA</span></li>
+                        <li class="gen"><span class="gen-name">KOC New IT</span><span class="gen-kva">416 V &middot; 1041 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Mega Complex GEN-1</span><span class="gen-kva">416 V &middot; 900 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Mega Complex GEN-2</span><span class="gen-kva">416 V &middot; 900 kVA</span></li>
+                </ul>
+            </article>
+            <article class="slot" data-week="4" data-day="6">
+                <header class="slot-head">
+                    <div>
+                        <h2>4th Week &mdash; Saturday</h2>
+                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                    </div>
+                    <div class="slot-tags">
+                        <span class="tag crit">Critical</span>
+                        <span class="tag count">5 generators</span>
+                    </div>
+                </header>
+                <ul class="gens">
+                        <li class="gen"><span class="gen-name">Radio Station</span><span class="gen-kva">415 V &middot; 1400 kVA</span></li>
+                        <li class="gen"><span class="gen-name">PHQ</span><span class="gen-kva">415 V &middot; 275 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Hangar 140</span><span class="gen-kva">415 V &middot; 165 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Hangar 150</span><span class="gen-kva">415 V &middot; 220 kVA</span></li>
+                        <li class="gen"><span class="gen-name">Petrol Filling Station</span><span class="gen-kva">415 V &middot; 180 kVA</span></li>
+                </ul>
+            </article>
+        </section>
+
+        <section class="panel rules">
+            <h2 class="panel-title">Generator Classification</h2>
+            <ol>
+                <li>Every generator rated <b>440 V or above</b> is a <b>Critical Generator</b>.</li>
+                <li>Any generator <b>inside an operational building</b> is also Critical, whatever its voltage.</li>
+                <li>Every other generator is <b>Non-Critical</b>.</li>
+            </ol>
+            <p class="legend"><span class="hv-dot"></span> Rated 440 V or above</p>
+        </section>
+
+
+    </main>
+</div>
+
+<script>
+const $ = function (id) { return document.getElementById(id); };
+
+/* ---------------- theme ---------------- */
+const ICON_MOON = '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const ICON_SUN  = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/>' +
+                  '<path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+
+function updateThemeIcon() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    $('themeBtn').innerHTML = dark ? ICON_SUN : ICON_MOON;
+}
+(function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('genTest.theme'); } catch (e) {}
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon();
+})();
+$('themeBtn').addEventListener('click', function () {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('genTest.theme', next); } catch (e) {}
+    updateThemeIcon();
+});
+
+/* ---------------- mobile nav ---------------- */
+$('menuBtn').addEventListener('click', function () {
+    $('sidebar').classList.add('open'); $('backdrop').classList.add('show');
+});
+$('backdrop').addEventListener('click', function () {
+    $('sidebar').classList.remove('open'); $('backdrop').classList.remove('show');
+});
+
+
+/* ---------------- the next date for each test-run day ----------------
+   "1st Week Saturday" is read as the first Saturday of the month, and so on.
+   Each card shows its next occurrence; today's or the soonest is marked. */
+(function () {
+    const MONTH = { month: 'short', year: 'numeric' };
+    function nth(year, month, weekday, n) {      // weekday: 0 Sun .. 6 Sat
+        const first = new Date(year, month, 1);
+        const shift = (weekday - first.getDay() + 7) % 7;
+        return new Date(year, month, 1 + shift + (n - 1) * 7);
+    }
+    function nextFor(week, day, from) {
+        const today = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+        let d = nth(today.getFullYear(), today.getMonth(), day, week);
+        if (d < today) d = nth(today.getFullYear(), today.getMonth() + 1, day, week);
+        return d;
+    }
+    const now = new Date();
+    let soonest = null, soonestCard = null;
+    document.querySelectorAll('.slot').forEach(function (card) {
+        const d = nextFor(+card.dataset.week, +card.dataset.day, now);
+        card.querySelector('.next-date').textContent =
+            d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        card._next = d;
+        if (!soonest || d < soonest) { soonest = d; soonestCard = card; }
+    });
+    if (soonestCard) {
+        soonestCard.classList.add('due');
+        const tags = soonestCard.querySelector('.slot-tags');
+        const t = document.createElement('span');
+        const days = Math.round((soonest - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+        t.className = 'tag due';
+        t.textContent = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days';
+        tags.appendChild(t);
+        document.getElementById('kpiNext').textContent =
+            soonest.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        document.getElementById('kpiNextFoot').textContent =
+            soonestCard.querySelector('h2').textContent + ' \u00b7 ' +
+            soonestCard.querySelectorAll('.gens li').length + ' generators';
+    }
+})();
+</script>
+<script>
+/* Sign out - end the session the sign-in page wrote, then go back to it.
+   replace() rather than a link, so Back does not return to this page. */
+(function () {
+    var b = document.getElementById('signOutBtn');
+    if (!b) return;
+    b.addEventListener('click', function () {
+        try { localStorage.removeItem('koc-sg-session'); } catch (e) { /* private mode */ }
+        location.replace('index.html');
+    });
+})();
+</script>
+</body>
+</html>
