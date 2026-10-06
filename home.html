@@ -560,6 +560,30 @@ a.tile.enter:hover .tile-go { color: var(--good); }
                 <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
             </a>
 
+            <a class="tile" href="Test_Run_Schedule.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/><path d="M8 15h3"/></svg></span>
+                    <div>
+                        <div class="tile-name">Test Run Schedule</div>
+                        <div class="tile-stat">5 test-run days</div>
+                    </div>
+                </div>
+                <p class="tile-desc">Which generators run in which week, when each day falls next, and the critical / non-critical rules.</p>
+                <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
+            <a class="tile" href="power/Power_Parameters.html">
+                <div class="tile-top">
+                    <span class="tile-ico"><svg class="i lg" viewBox="0 0 24 24"><path d="M3 17l5-6 4 3 5-8 4 4"/><path d="M3 21h18"/></svg></span>
+                    <div>
+                        <div class="tile-name">Power Parameters</div>
+                        <div class="tile-stat" id="tMeters">&mdash;</div>
+                    </div>
+                </div>
+                <p class="tile-desc">A day of PM1125H meter readings per incomer — power, voltage, current, power factor and unbalance, second by second.</p>
+                <div class="tile-go">Open <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </a>
+
         </section>
 
         <div class="sec-head">
@@ -642,6 +666,23 @@ a.tile.enter:hover .tile-go { color: var(--good); }
 
 <script>
 const $ = function (id) { return document.getElementById(id); };
+
+/* ---------------- how many meters are logged ----------------
+   Counted from the meter list the Power Parameters page uses, so the tile
+   keeps up as recordings are added. */
+(function () {
+    fetch('power/sites/index.js')
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .then(function (t) {
+            const list = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1));
+            const el = document.getElementById('tMeters');
+            if (el) el.textContent = list.length + (list.length === 1 ? ' meter' : ' meters');
+        })
+        .catch(function () {
+            const el = document.getElementById('tMeters');
+            if (el) el.textContent = 'Meter trends';
+        });
+})();
 
 /* ---------------- theme ---------------- */
 const ICON_MOON = '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
