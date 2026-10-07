@@ -74,7 +74,14 @@ const mean = a => { let s = 0, c = 0; for (const v of a) if (v != null) { s += v
    ============================================================ */
 const charts = {};
 let RANGE_H = 24;
-try { const r = localStorage.getItem('pm1125h-meter-logger.range'); if (r !== null) RANGE_H = +r; } catch (e) {}
+// 7d and 30d are gone: every survey file is one 24-hour visit, so they only
+// ever showed the same thing as All. A browser that remembers one of them
+// would otherwise land on a range with no button lit, so fall back to 24h.
+const RANGES = [0, 0.25, 1, 6, 24];
+try {
+    const r = localStorage.getItem('pm1125h-meter-logger.range');
+    if (r !== null && RANGES.includes(+r)) RANGE_H = +r;
+} catch (e) {}
 
 function dataset() { return window.METER_DATA || null; }
 
