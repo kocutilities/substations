@@ -1135,8 +1135,18 @@ function kocFindings(s, meta) {
             `Voltage ${nf(s.vMin, 1)}–${nf(s.vMax, 1)} V (${nf(pcMin, 1)} % to ${nf(pcMax, 1)} %)`,
             `Against ${nf(s.nominal, 0)} V nominal, the permitted band is ` +
             `${nf(band[0], 1)}–${nf(band[1], 1)} V.` +
-            (breach ? ` <b>${nf(s.vOut, 1)} % of the range sat outside it.</b>` : ' Within band.'),
-            'KOC-E-003 Pt1 §9.5.2 — ±6 %; §9.5.4(b)(iv) — building services at 415 V',
+            (breach ? ` <b>${nf(s.vOut, 1)} % of the range sat outside it.</b>` : ' Within band.') +
+            // §9.5.4(b)(iv) names 415 V for building services, so quoting it at a
+            // board that is not 415 V by design asserts something false. SECOND
+            // AVENUE NEW OFFICE MLTB is a 440 V substation; the ±6% of §9.5.2
+            // still applies, measured against ITS nominal.
+            (s.nominal !== 415
+                ? ` This board's nominal is ${nf(s.nominal, 0)} V by design, not the 415 V of` +
+                  ` §9.5.4(b)(iv); the ±6 % band is taken against ${nf(s.nominal, 0)} V.`
+                : ''),
+            s.nominal === 415
+                ? 'KOC-E-003 Pt1 §9.5.2 — ±6 %; §9.5.4(b)(iv) — building services at 415 V'
+                : 'KOC-E-003 Pt1 §9.5.2 — ±6 % of nominal',
             breach
                 ? `Raise with the supply authority / check the transformer tap. Note that adding ` +
                   `capacitors raises voltage further, so power-factor correction and the tap ` +
