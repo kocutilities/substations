@@ -342,6 +342,7 @@ td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
     border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 17px 15px;
 }
 .slot.due { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft), var(--shadow); }
+.slot.past { opacity: .62; }          /* a day already gone by in the month shown */
 .slot-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .slot-head h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
 .slot-date { margin: 3px 0 0; font-size: 12px; color: var(--text-dim); }
@@ -369,6 +370,25 @@ td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
     align-self: center;
 }
 .legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--text-dim); }
+.monthbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap; padding: 13px 16px; margin-bottom: 14px;
+}
+.monthbar-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.monthbar-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-faint); margin-right: 2px;
+}
+.monthbar input[type="month"] {
+    font-family: inherit; font-size: 13.5px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 8px 11px;
+    font-variant-numeric: tabular-nums;
+}
+.monthbar input[type="month"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
+.monthbar-note { margin: 0; font-size: 12px; color: var(--text-dim); }
+/* the page styles every button display:inline-flex, which beats the hidden attribute */
+.monthbar [hidden] { display: none !important; }
 .gen-kva { margin-left: auto; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .gen-note { flex-basis: 100%; font-size: 11px; color: var(--warn); }
 .rules { margin-top: 16px; }
@@ -459,10 +479,21 @@ td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
                 <div class="kpi-foot">Of the 27 sets</div>
             </div>
             <div class="kpi">
-                <div class="kpi-label">Next Test Run</div>
+                <div class="kpi-label kpi-label-next">Next Test Run</div>
                 <div class="kpi-value" id="kpiNext">&mdash;</div>
                 <div class="kpi-foot" id="kpiNextFoot">&nbsp;</div>
             </div>
+        </section>
+
+        <section class="panel monthbar">
+            <div class="monthbar-left">
+                <span class="monthbar-label">Showing</span>
+                <button type="button" class="icon-btn" id="prevMonth" aria-label="Previous month" title="Previous month"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+                <input type="month" id="monthPick" aria-label="Month and year">
+                <button type="button" class="icon-btn" id="nextMonth" aria-label="Next month" title="Next month"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+                <button type="button" id="thisMonth" hidden>This month</button>
+            </div>
+            <p class="monthbar-note" id="monthNote">&nbsp;</p>
         </section>
 
         <section class="slots">
@@ -470,7 +501,7 @@ td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
                 <header class="slot-head">
                     <div>
                         <h2>1st Week &mdash; Saturday</h2>
-                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                        <p class="slot-date"><span class="date-label">Next:</span> <b class="next-date">&mdash;</b></p>
                     </div>
                     <div class="slot-tags">
                         <span class="tag crit">Critical</span>
@@ -490,7 +521,7 @@ td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
                 <header class="slot-head">
                     <div>
                         <h2>2nd Week &mdash; Friday</h2>
-                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                        <p class="slot-date"><span class="date-label">Next:</span> <b class="next-date">&mdash;</b></p>
                     </div>
                     <div class="slot-tags">
                         <span class="tag crit">Critical</span>
@@ -509,7 +540,7 @@ td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
                 <header class="slot-head">
                     <div>
                         <h2>2nd Week &mdash; Saturday</h2>
-                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                        <p class="slot-date"><span class="date-label">Next:</span> <b class="next-date">&mdash;</b></p>
                     </div>
                     <div class="slot-tags">
                         <span class="tag noncrit">Non-Critical</span>
@@ -529,7 +560,7 @@ td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
                 <header class="slot-head">
                     <div>
                         <h2>3rd Week &mdash; Saturday</h2>
-                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                        <p class="slot-date"><span class="date-label">Next:</span> <b class="next-date">&mdash;</b></p>
                     </div>
                     <div class="slot-tags">
                         <span class="tag crit">Critical</span>
@@ -548,7 +579,7 @@ td.c-rat { font-variant-numeric: tabular-nums; min-width: 200px; }
                 <header class="slot-head">
                     <div>
                         <h2>4th Week &mdash; Saturday</h2>
-                        <p class="slot-date">Next: <b class="next-date">&mdash;</b></p>
+                        <p class="slot-date"><span class="date-label">Next:</span> <b class="next-date">&mdash;</b></p>
                     </div>
                     <div class="slot-tags">
                         <span class="tag crit">Critical</span>
@@ -613,45 +644,105 @@ $('backdrop').addEventListener('click', function () {
 });
 
 
-/* ---------------- the next date for each test-run day ----------------
+/* ---------------- the date of each test-run day ----------------
    "1st Week Saturday" is read as the first Saturday of the month, and so on.
-   Each card shows its next occurrence; today's or the soonest is marked. */
+   The month picker shows any month; on the current one the soonest day still
+   to come is marked, which is what the page opens on. */
 (function () {
-    const MONTH = { month: 'short', year: 'numeric' };
+    const pick = document.getElementById('monthPick');
+    const note = document.getElementById('monthNote');
+    const thisBtn = document.getElementById('thisMonth');
+    const cards = [...document.querySelectorAll('.slot')];
+
     function nth(year, month, weekday, n) {      // weekday: 0 Sun .. 6 Sat
         const first = new Date(year, month, 1);
         const shift = (weekday - first.getDay() + 7) % 7;
         return new Date(year, month, 1 + shift + (n - 1) * 7);
     }
-    function nextFor(week, day, from) {
-        const today = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-        let d = nth(today.getFullYear(), today.getMonth(), day, week);
-        if (d < today) d = nth(today.getFullYear(), today.getMonth() + 1, day, week);
-        return d;
-    }
-    const now = new Date();
-    let soonest = null, soonestCard = null;
-    document.querySelectorAll('.slot').forEach(function (card) {
-        const d = nextFor(+card.dataset.week, +card.dataset.day, now);
-        card.querySelector('.next-date').textContent =
-            d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-        card._next = d;
-        if (!soonest || d < soonest) { soonest = d; soonestCard = card; }
-    });
-    if (soonestCard) {
-        soonestCard.classList.add('due');
-        const tags = soonestCard.querySelector('.slot-tags');
-        const t = document.createElement('span');
-        const days = Math.round((soonest - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
-        t.className = 'tag due';
-        t.textContent = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days';
-        tags.appendChild(t);
+    const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const ym = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+
+    function render(year, month) {
+        const today = midnight(new Date());
+        const isThisMonth = year === today.getFullYear() && month === today.getMonth();
+        let soonest = null, soonestCard = null;
+
+        cards.forEach(function (card) {
+            const d = nth(year, month, +card.dataset.day, +card.dataset.week);
+            card.querySelector('.next-date').textContent =
+                d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+            card.querySelector('.date-label').textContent = isThisMonth && d >= today ? 'Next:' : 'Date:';
+            card.classList.remove('due', 'past');
+            const old = card.querySelector('.tag.due');
+            if (old) old.remove();
+            if (d < today) card.classList.add('past');
+            else if (!soonest || d < soonest) { soonest = d; soonestCard = card; }
+        });
+
+        // only the current month gets the "in N days" marker
+        if (isThisMonth && soonestCard) {
+            soonestCard.classList.add('due');
+            const days = Math.round((soonest - today) / 86400000);
+            const t = document.createElement('span');
+            t.className = 'tag due';
+            t.textContent = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days';
+            soonestCard.querySelector('.slot-tags').appendChild(t);
+        }
+
+        const first = cards.map(c => nth(year, month, +c.dataset.day, +c.dataset.week))
+                           .sort((a, b) => a - b)[0];
+        const shown = soonestCard || cards.find(c => c.querySelector('.next-date').textContent ===
+            first.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }));
+        const shownDate = isThisMonth && soonest ? soonest : first;
         document.getElementById('kpiNext').textContent =
-            soonest.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-        document.getElementById('kpiNextFoot').textContent =
-            soonestCard.querySelector('h2').textContent + ' \u00b7 ' +
-            soonestCard.querySelectorAll('.gens li').length + ' generators';
+            shownDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        document.getElementById('kpiNextFoot').textContent = shown
+            ? shown.querySelector('h2').textContent + ' \u00b7 ' +
+              shown.querySelectorAll('.gens li').length + ' generators'
+            : '';
+        document.querySelector('.kpi-label-next').textContent =
+            isThisMonth ? 'Next Test Run' : 'First Test Run';
+
+        const monthName = new Date(year, month, 1)
+            .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        note.textContent = isThisMonth
+            ? 'This month. The soonest day still to come is marked.'
+            : 'Test-run days in ' + monthName + '.';
+        thisBtn.hidden = isThisMonth;
     }
+
+    function show(year, month) {
+        const d = new Date(year, month, 1);      // normalises month 12 / -1
+        pick.value = ym(d);
+        render(d.getFullYear(), d.getMonth());
+    }
+    function current() {
+        const [y, m] = pick.value.split('-').map(Number);
+        return { y: y, m: m - 1 };
+    }
+
+    pick.addEventListener('change', function () {
+        if (!pick.value) return show(new Date().getFullYear(), new Date().getMonth());
+        const c = current(); render(c.y, c.m);
+        const today = new Date();
+        thisBtn.hidden = c.y === today.getFullYear() && c.m === today.getMonth();
+        const d = new Date(c.y, c.m, 1);
+        note.textContent = (c.y === today.getFullYear() && c.m === today.getMonth())
+            ? 'This month. The soonest day still to come is marked.'
+            : 'Test-run days in ' + d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) + '.';
+    });
+    document.getElementById('prevMonth').addEventListener('click', function () {
+        const c = current(); show(c.y, c.m - 1);
+    });
+    document.getElementById('nextMonth').addEventListener('click', function () {
+        const c = current(); show(c.y, c.m + 1);
+    });
+    thisBtn.addEventListener('click', function () {
+        const t = new Date(); show(t.getFullYear(), t.getMonth());
+    });
+
+    const today = new Date();
+    show(today.getFullYear(), today.getMonth());
 })();
 </script>
 <script>
